@@ -14,6 +14,10 @@
 
 **Scope note:** This is plan 1 of 4 for P0. It delivers the runtime package + retrieval service code (`make install && make test` green, ≥80% coverage; local `/predict` works with mock backend + fixture retrieval). It does **not** include DVC/MLflow/Makefile-pipeline (plan 2), Docker/Helm/KServe/CI (plan 3), or GKE/RunPod/observability-deploy (plan 4).
 
+**Boundary update after implementation:** the GitHub repo is self-contained for
+runtime code. `KGRetrieval` no longer imports from a sibling `baseline/`
+checkout; it loads local KG artifacts directly from `KG_DATA_DIR`.
+
 ---
 
 ## File Structure

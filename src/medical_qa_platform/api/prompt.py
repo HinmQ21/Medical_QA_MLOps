@@ -1,8 +1,7 @@
 """Build chat messages for the medical MCQ task.
 
-NOTE: SYSTEM_PROMPT must be reconciled with the canonical eval prompt in
-baseline/scripts/benchmark/grpo_eval/grpo_eval.py before the real-model demo
-(plan 4). For mock/local testing the exact wording is not asserted.
+NOTE: SYSTEM_PROMPT must be reconciled with the canonical eval prompt before the
+real-model demo. For mock/local testing the exact wording is not asserted.
 """
 
 SYSTEM_PROMPT = (
