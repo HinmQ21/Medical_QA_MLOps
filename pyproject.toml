@@ -19,6 +19,12 @@ dependencies = [
 dev = [
     "pytest>=8.0",
     "pytest-cov>=5.0",
+    "PyYAML>=6.0",
+]
+pipeline = [
+    "dvc>=3.50",
+    "mlflow>=2.12",
+    "PyYAML>=6.0",
 ]
 # Heavy adapters used only by the retrieval container; never in unit tests.
 runtime = [
