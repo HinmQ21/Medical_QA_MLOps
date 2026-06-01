@@ -17,6 +17,7 @@ def test_dockerignore_excludes_local_and_generated_build_context():
         ".worktrees/",
         ".dvc/cache/",
         ".dvc/tmp/",
+        ".dvc/config.local",
         "artifacts/",
         "__pycache__/",
         "*.py[cod]",

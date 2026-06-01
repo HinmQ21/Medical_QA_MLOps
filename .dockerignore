@@ -4,6 +4,7 @@
 .worktrees/
 .dvc/cache/
 .dvc/tmp/
+.dvc/config.local
 artifacts/
 __pycache__/
 *.py[cod]
