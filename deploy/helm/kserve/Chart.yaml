@@ -1,0 +1,6 @@
+apiVersion: v2
+name: medical-qa-kserve
+description: KServe CPU smoke/mock InferenceService for Medical QA
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
