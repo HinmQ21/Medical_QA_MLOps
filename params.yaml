@@ -1,0 +1,12 @@
+smoke:
+  data_dir: mlops/smoke_data
+  artifact_dir: artifacts/smoke
+  kg_dir: artifacts/smoke/kg
+  retrieval_fixture_path: artifacts/smoke/kg/retrieval_fixture.json
+  predictions_path: artifacts/smoke/eval_predictions.jsonl
+  metrics_path: artifacts/smoke/eval_metrics.json
+  mlflow_receipt_path: artifacts/smoke/mlflow_register_dry_run.json
+  top_k: 2
+  model_backend: mock
+  model_version: smoke-dev
+  registered_model_name: medical-qa-smoke
