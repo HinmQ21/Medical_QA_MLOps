@@ -1,0 +1,6 @@
+apiVersion: v2
+name: medical-qa-nginx
+description: NGINX gateway with API-key auth for Medical QA
+type: application
+version: 0.1.0
+appVersion: "1.27"

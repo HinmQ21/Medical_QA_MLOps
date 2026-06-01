@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: medical-qa-nginx-config
+data:
+  default.conf.template: |-
+    map $http_x_api_key $api_key_valid {
+      default 0;
+      "${API_KEY}" 1;
+    }
+
+    server {
+      listen 8080;
+
+      location /health {
+        return 200 "ok\n";
+      }
+
+      location / {
+        if ($api_key_valid = 0) {
+          return 401;
+        }
+        proxy_set_header Host $host;
+        proxy_set_header X-Request-ID $request_id;
+        proxy_pass http://medical-qa-api:8000;
+      }
+    }
