@@ -1,0 +1,6 @@
+apiVersion: v2
+name: medical-qa-retrieval
+description: Medical KG retrieval service with DVC-populated artifacts
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

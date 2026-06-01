@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: medical-qa-retrieval-dvc
+data:
+  dvc-config: |-
+{{ .Values.dvc.config | indent 4 }}
+  dvc-yaml: |-
+{{ .Values.dvc.yaml | indent 4 }}
+  dvc-lock: |-
+{{ .Values.dvc.lock | indent 4 }}
+  artifacts-dvc: |-
+{{ .Values.dvc.artifactsDvc | indent 4 }}

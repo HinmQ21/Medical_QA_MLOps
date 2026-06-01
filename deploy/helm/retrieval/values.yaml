@@ -1,0 +1,52 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/hinmq21/medical-qa-retrieval
+  tag: latest
+  pullPolicy: IfNotPresent
+
+initImage:
+  repository: ghcr.io/hinmq21/medical-qa-pipeline-init
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  port: 8001
+
+persistence:
+  storageClassName: ""
+  size: 5Gi
+  mountPath: /mnt/artifacts
+
+env:
+  retrievalBackend: kg
+  retrievalDevice: cpu
+  kgDataDir: /mnt/artifacts/smoke/kg
+  hfHome: /mnt/artifacts/hf
+  sentenceTransformersHome: /mnt/artifacts/hf/sentence-transformers
+
+dvc:
+  config: |
+    [core]
+        remote = gcsremote
+    ['remote "gcsremote"']
+        url = gs://medical-qa-plan4-wiring/dvc
+  yaml: |
+    stages: {}
+  lock: |
+    schema: '2.0'
+  artifactsDvc: |
+    outs: []
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 2Gi
+  limits:
+    cpu: "2"
+    memory: 4Gi
+
+autoscaling:
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70

@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: medical-qa-retrieval
+  labels:
+    app.kubernetes.io/name: medical-qa-retrieval
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: medical-qa-retrieval
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: medical-qa-retrieval
+    spec:
+      initContainers:
+        - name: dvc-pull
+          image: "{{ .Values.initImage.repository }}:{{ .Values.initImage.tag }}"
+          imagePullPolicy: {{ .Values.initImage.pullPolicy }}
+          workingDir: /workspace
+          command:
+            - /bin/sh
+            - -c
+          args:
+            - dvc pull --no-run-cache
+          volumeMounts:
+            - name: artifacts
+              mountPath: /workspace/artifacts
+            - name: dvc-metadata
+              mountPath: /workspace/.dvc/config
+              subPath: dvc-config
+            - name: dvc-metadata
+              mountPath: /workspace/dvc.yaml
+              subPath: dvc-yaml
+            - name: dvc-metadata
+              mountPath: /workspace/dvc.lock
+              subPath: dvc-lock
+            - name: dvc-metadata
+              mountPath: /workspace/artifacts.dvc
+              subPath: artifacts-dvc
+      containers:
+        - name: retrieval
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: RETRIEVAL_BACKEND
+              value: {{ .Values.env.retrievalBackend | quote }}
+            - name: RETRIEVAL_DEVICE
+              value: {{ .Values.env.retrievalDevice | quote }}
+            - name: KG_DATA_DIR
+              value: {{ .Values.env.kgDataDir | quote }}
+            - name: HF_HOME
+              value: {{ .Values.env.hfHome | quote }}
+            - name: SENTENCE_TRANSFORMERS_HOME
+              value: {{ .Values.env.sentenceTransformersHome | quote }}
+          ports:
+            - name: http
+              containerPort: 8001
+          volumeMounts:
+            - name: artifacts
+              mountPath: {{ .Values.persistence.mountPath }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+      volumes:
+        - name: artifacts
+          persistentVolumeClaim:
+            claimName: medical-qa-retrieval-artifacts
+        - name: dvc-metadata
+          configMap:
+            name: medical-qa-retrieval-dvc
