@@ -1,3 +1,6 @@
+SHELL := /bin/bash
+.SHELLFLAGS := -eu -o pipefail -c
+
 PY := .venv/bin/python
 PIP := .venv/bin/pip
 DEPLOY_TOOLS_DIR := .tools
@@ -16,7 +19,9 @@ install: .venv
 install-pipeline: .venv
 	$(PIP) install -e ".[dev,pipeline]"
 
-install-deploy-tools: .venv
+install-deploy-tools: $(HELM) $(KUBECTL)
+
+$(HELM) $(KUBECTL) &: scripts/install_deploy_tools.py | .venv
 	$(PY) scripts/install_deploy_tools.py --bin-dir $(DEPLOY_TOOLS_DIR)/bin
 
 test:
@@ -39,19 +44,19 @@ register-model:
 dvc-status:
 	.venv/bin/dvc status
 
-helm-lint: install-deploy-tools
+helm-lint: $(HELM) $(KUBECTL)
 	$(HELM) lint deploy/helm/api
 	$(HELM) lint deploy/helm/retrieval
 	$(HELM) lint deploy/helm/nginx
 	$(HELM) lint deploy/helm/kserve
 
-helm-template: install-deploy-tools
+helm-template: $(HELM) $(KUBECTL)
 	$(HELM) template medical-qa-api deploy/helm/api >/dev/null
 	$(HELM) template medical-qa-retrieval deploy/helm/retrieval >/dev/null
 	$(HELM) template medical-qa-nginx deploy/helm/nginx >/dev/null
 	$(HELM) template medical-qa-kserve deploy/helm/kserve >/dev/null
 
-helm-dry-run: install-deploy-tools
+helm-dry-run: $(HELM) $(KUBECTL)
 	$(HELM) template medical-qa-api deploy/helm/api | $(KUBECTL) apply --dry-run=client --validate=false -f -
 	$(HELM) template medical-qa-retrieval deploy/helm/retrieval | $(KUBECTL) apply --dry-run=client --validate=false -f -
 	$(HELM) template medical-qa-nginx deploy/helm/nginx | $(KUBECTL) apply --dry-run=client --validate=false -f -

@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import platform
-import shutil
 import stat
 import subprocess
 import tarfile
@@ -31,6 +31,21 @@ def _download(url: str, destination: Path) -> None:
         destination.write_bytes(response.read())
 
 
+def _parse_checksum(path: Path) -> str:
+    tokens = path.read_text().split()
+    if not tokens:
+        raise RuntimeError(f"checksum file is empty: {path}")
+    return tokens[0]
+
+
+def _verify_sha256(path: Path, expected: str) -> None:
+    actual = hashlib.sha256(path.read_bytes()).hexdigest()
+    if actual.lower() != expected.lower():
+        raise RuntimeError(
+            f"checksum mismatch for {path.name}: expected {expected}, got {actual}"
+        )
+
+
 def _make_executable(path: Path) -> None:
     mode = path.stat().st_mode
     path.chmod(mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
@@ -42,10 +57,20 @@ def _install_helm(bin_dir: Path, arch: str) -> None:
     with tempfile.TemporaryDirectory() as tmp:
         tmpdir = Path(tmp)
         archive = tmpdir / archive_name
+        checksum = tmpdir / f"{archive_name}.sha256sum"
         _download(url, archive)
+        _download(f"{url}.sha256sum", checksum)
+        _verify_sha256(archive, _parse_checksum(checksum))
         with tarfile.open(archive) as handle:
-            handle.extractall(tmpdir)
-        shutil.copy2(tmpdir / f"linux-{arch}" / "helm", bin_dir / "helm")
+            member_name = f"linux-{arch}/helm"
+            try:
+                member = handle.extractfile(member_name)
+            except KeyError as exc:
+                raise RuntimeError(f"missing Helm archive member: {member_name}") from exc
+            if member is None:
+                raise RuntimeError(f"Helm archive member is not a file: {member_name}")
+            with member:
+                (bin_dir / "helm").write_bytes(member.read())
     _make_executable(bin_dir / "helm")
 
 
@@ -53,7 +78,14 @@ def _install_kubectl(bin_dir: Path, arch: str) -> None:
     url = (
         f"https://dl.k8s.io/release/{KUBECTL_VERSION}/bin/linux/{arch}/kubectl"
     )
-    _download(url, bin_dir / "kubectl")
+    with tempfile.TemporaryDirectory() as tmp:
+        tmpdir = Path(tmp)
+        binary = tmpdir / "kubectl"
+        checksum = tmpdir / "kubectl.sha256"
+        _download(url, binary)
+        _download(f"{url}.sha256", checksum)
+        _verify_sha256(binary, _parse_checksum(checksum))
+        (bin_dir / "kubectl").write_bytes(binary.read_bytes())
     _make_executable(bin_dir / "kubectl")
 
 
