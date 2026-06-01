@@ -1,0 +1,2 @@
+{"id":"smoke-001","question":"Which medication is commonly used first-line for type 2 diabetes?","options":{"A":"Metformin","B":"Amoxicillin"},"answer":"A","mock_answer":"A","retrieval_query":"type 2 diabetes first line medication"}
+{"id":"smoke-002","question":"Which hormone is deficient in type 1 diabetes?","options":{"A":"Insulin","B":"Thyroxine"},"answer":"A","mock_answer":"A","retrieval_query":"type 1 diabetes deficient hormone"}
