@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+from medical_qa_platform.inference.kserve_backend import KServeBackend
 from medical_qa_platform.serving.kserve_mock_app import create_app
 
 
@@ -10,6 +11,18 @@ def test_kserve_mock_health_and_ready():
 
 
 def test_kserve_mock_predict_matches_kserve_backend_contract():
+    client = TestClient(create_app())
+    backend = KServeBackend(
+        url="/v1/models/medical-qa-smoke:predict",
+        client=client,
+    )
+
+    text = backend.generate([{"role": "user", "content": "pick A"}])
+
+    assert text == "<think>Mock reasoning for 1 messages.</think><answer>A</answer>"
+
+
+def test_kserve_mock_predict_response_shape():
     client = TestClient(create_app())
     response = client.post(
         "/v1/models/medical-qa-smoke:predict",

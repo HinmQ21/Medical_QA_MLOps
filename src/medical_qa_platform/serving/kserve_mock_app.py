@@ -3,6 +3,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
+from ..inference.base import ModelBackend
 from ..inference.mock_backend import MockBackend
 
 
@@ -22,7 +23,7 @@ class PredictResponse(BaseModel):
     predictions: list[Prediction]
 
 
-def create_app(backend: MockBackend | None = None) -> FastAPI:
+def create_app(backend: ModelBackend | None = None) -> FastAPI:
     app = FastAPI(title="Medical QA KServe Mock Predictor")
     model = backend or MockBackend()
 
