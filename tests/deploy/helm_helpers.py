@@ -20,12 +20,23 @@ def require_helm() -> Path:
 def render_chart(chart_name: str) -> list[dict]:
     helm = require_helm()
     chart = ROOT / "deploy/helm" / chart_name
-    result = subprocess.run(
-        [str(helm), "template", f"test-{chart_name}", str(chart)],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
+    cmd = [str(helm), "template", f"test-{chart_name}", str(chart)]
+    try:
+        result = subprocess.run(
+            cmd,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except subprocess.CalledProcessError as exc:
+        stdout = exc.stdout if exc.stdout is not None else exc.output
+        raise AssertionError(
+            "helm template failed\n"
+            f"command: {' '.join(cmd)}\n"
+            f"stdout:\n{stdout or ''}\n"
+            f"stderr:\n{exc.stderr or ''}"
+        ) from exc
     return [
         doc
         for doc in yaml.safe_load_all(result.stdout)
@@ -33,14 +44,21 @@ def render_chart(chart_name: str) -> list[dict]:
     ]
 
 
+def _resource_name(resource: dict) -> str:
+    metadata = resource.get("metadata", {})
+    if not isinstance(metadata, dict):
+        return "<unknown>"
+    return metadata.get("name") or "<unknown>"
+
+
 def find_kind(resources: list[dict], kind: str, name: str | None = None) -> dict:
     for resource in resources:
         if resource.get("kind") != kind:
             continue
-        if name is None or resource.get("metadata", {}).get("name") == name:
+        if name is None or _resource_name(resource) == name:
             return resource
     available = [
-        f"{resource.get('kind')}/{resource.get('metadata', {}).get('name')}"
+        f"{resource.get('kind')}/{_resource_name(resource)}"
         for resource in resources
     ]
     raise AssertionError(f"missing {kind}/{name}; available={available}")
