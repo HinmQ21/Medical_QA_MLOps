@@ -26,13 +26,13 @@ def test_dvc_yaml_has_expected_smoke_stages():
     stages = dvc["stages"]
     assert set(stages) == {"build_kg_smoke", "eval_smoke", "register_smoke_model"}
     assert stages["build_kg_smoke"]["cmd"] == (
-        "python -m mlops.pipelines.build_smoke_kg --profile smoke"
+        ".venv/bin/python -m mlops.pipelines.build_smoke_kg --profile smoke"
     )
     assert stages["eval_smoke"]["cmd"] == (
-        "python -m mlops.pipelines.eval_smoke --profile smoke"
+        ".venv/bin/python -m mlops.pipelines.eval_smoke --profile smoke"
     )
     assert stages["register_smoke_model"]["cmd"] == (
-        "python -m mlops.mlflow_register --profile smoke --dry-run"
+        ".venv/bin/python -m mlops.mlflow_register --profile smoke --dry-run"
     )
     assert "artifacts/smoke/kg/manifest.json" in stages["build_kg_smoke"]["outs"]
     assert "artifacts/smoke/eval_metrics.json" in stages["eval_smoke"]["outs"]

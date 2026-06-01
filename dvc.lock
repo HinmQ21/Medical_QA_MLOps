@@ -1,0 +1,94 @@
+schema: '2.0'
+stages:
+  build_kg_smoke:
+    cmd: .venv/bin/python -m mlops.pipelines.build_smoke_kg --profile smoke
+    deps:
+    - path: mlops/pipelines/build_smoke_kg.py
+      hash: md5
+      md5: 89d4762781c2d3217e6d6500bc325c76
+      size: 2576
+    - path: mlops/pipelines/profiles.py
+      hash: md5
+      md5: 4bdf530e3ab684a9bacb552d9cc73ab9
+      size: 1441
+    - path: params.yaml
+      hash: md5
+      md5: 6cef568affc112ae86e1464d4ea4c309
+      size: 444
+    outs:
+    - path: artifacts/smoke/kg/entity_names.json
+      hash: md5
+      md5: 8a2fb8ccf832bba8888b634a581633d6
+      size: 73
+    - path: artifacts/smoke/kg/hedge_ids.json
+      hash: md5
+      md5: 1364b0e522344b20d6de3903c5c8acf1
+      size: 53
+    - path: artifacts/smoke/kg/manifest.json
+      hash: md5
+      md5: 027c25a2a3c94e9c5a487528231998bb
+      size: 169
+    - path: artifacts/smoke/kg/medical_hg.json
+      hash: md5
+      md5: d02d0bbd92ef8bc3f629dfdb794b7082
+      size: 1038
+    - path: artifacts/smoke/kg/retrieval_fixture.json
+      hash: md5
+      md5: 129280f63c5ae4ddcd2cda7f79eb867c
+      size: 226
+  eval_smoke:
+    cmd: .venv/bin/python -m mlops.pipelines.eval_smoke --profile smoke
+    deps:
+    - path: artifacts/smoke/kg/retrieval_fixture.json
+      hash: md5
+      md5: 129280f63c5ae4ddcd2cda7f79eb867c
+      size: 226
+    - path: mlops/pipelines/eval_smoke.py
+      hash: md5
+      md5: 0798de63207b85690b782010d3a3198a
+      size: 3106
+    - path: mlops/pipelines/profiles.py
+      hash: md5
+      md5: 4bdf530e3ab684a9bacb552d9cc73ab9
+      size: 1441
+    - path: mlops/smoke_data/medical_mcq.jsonl
+      hash: md5
+      md5: 4efa6bd0a45bac1ebb6659ae82276c88
+      size: 439
+    - path: params.yaml
+      hash: md5
+      md5: 6cef568affc112ae86e1464d4ea4c309
+      size: 444
+    outs:
+    - path: artifacts/smoke/eval_metrics.json
+      hash: md5
+      md5: eddc3def28d0a12e1e3e4f2bf3aacaca
+      size: 200
+    - path: artifacts/smoke/eval_predictions.jsonl
+      hash: md5
+      md5: 5ccc8486b9df00ed0f647c0c3741c32d
+      size: 602
+  register_smoke_model:
+    cmd: .venv/bin/python -m mlops.mlflow_register --profile smoke --dry-run
+    deps:
+    - path: artifacts/smoke/eval_metrics.json
+      hash: md5
+      md5: eddc3def28d0a12e1e3e4f2bf3aacaca
+      size: 200
+    - path: artifacts/smoke/eval_predictions.jsonl
+      hash: md5
+      md5: 5ccc8486b9df00ed0f647c0c3741c32d
+      size: 602
+    - path: mlops/mlflow_register.py
+      hash: md5
+      md5: e1991e0ceaa82917b8cc9b3c9d4d67c1
+      size: 2232
+    - path: params.yaml
+      hash: md5
+      md5: 6cef568affc112ae86e1464d4ea4c309
+      size: 444
+    outs:
+    - path: artifacts/smoke/mlflow_register_dry_run.json
+      hash: md5
+      md5: c1a07b46f0a7a176ab1c923caf2ceff2
+      size: 497

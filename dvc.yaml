@@ -1,6 +1,6 @@
 stages:
   build_kg_smoke:
-    cmd: python -m mlops.pipelines.build_smoke_kg --profile smoke
+    cmd: .venv/bin/python -m mlops.pipelines.build_smoke_kg --profile smoke
     deps:
       - mlops/pipelines/build_smoke_kg.py
       - mlops/pipelines/profiles.py
@@ -13,7 +13,7 @@ stages:
       - artifacts/smoke/kg/manifest.json
 
   eval_smoke:
-    cmd: python -m mlops.pipelines.eval_smoke --profile smoke
+    cmd: .venv/bin/python -m mlops.pipelines.eval_smoke --profile smoke
     deps:
       - mlops/pipelines/eval_smoke.py
       - mlops/pipelines/profiles.py
@@ -25,7 +25,7 @@ stages:
       - artifacts/smoke/eval_metrics.json
 
   register_smoke_model:
-    cmd: python -m mlops.mlflow_register --profile smoke --dry-run
+    cmd: .venv/bin/python -m mlops.mlflow_register --profile smoke --dry-run
     deps:
       - mlops/mlflow_register.py
       - artifacts/smoke/eval_metrics.json
