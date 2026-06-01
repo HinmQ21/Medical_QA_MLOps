@@ -8,6 +8,26 @@ def _read(name: str) -> str:
     return (ROOT / "docker" / name).read_text()
 
 
+def test_dockerignore_excludes_local_and_generated_build_context():
+    text = (ROOT / ".dockerignore").read_text()
+    ignored = [
+        ".git/",
+        ".venv/",
+        ".tools/",
+        ".worktrees/",
+        ".dvc/cache/",
+        ".dvc/tmp/",
+        "artifacts/",
+        "__pycache__/",
+        "*.py[cod]",
+        "*.egg-info/",
+        ".pytest_cache/",
+        ".coverage",
+    ]
+    for needle in ignored:
+        assert needle in text
+
+
 def test_api_dockerfile_is_lean_non_root_and_binds_all_interfaces():
     text = _read("api.Dockerfile")
     assert "FROM python:3.12-slim" in text
@@ -48,7 +68,11 @@ def test_kserve_mock_dockerfile_runs_mock_predictor_on_8080():
 
 def test_pipeline_init_dockerfile_contains_dvc_but_not_runtime_ml_dependencies():
     text = _read("pipeline-init.Dockerfile")
-    assert "pip install --no-cache-dir '.[pipeline]'" in text
+    assert "dvc>=3.50" in text
     assert ".[runtime]" not in text
+    assert ".[pipeline]" not in text
+    assert "mlflow" not in text
+    assert "COPY src" not in text
+    assert "COPY mlops" not in text
     assert "USER app" in text
     assert 'CMD ["dvc", "--version"]' in text

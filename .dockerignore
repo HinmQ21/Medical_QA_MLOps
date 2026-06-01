@@ -1,0 +1,12 @@
+.git/
+.venv/
+.tools/
+.worktrees/
+.dvc/cache/
+.dvc/tmp/
+artifacts/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
