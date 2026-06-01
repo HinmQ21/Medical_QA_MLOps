@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import argparse
-import os
 import platform
 import shutil
 import stat
+import subprocess
 import tarfile
 import tempfile
 import urllib.request
@@ -77,7 +77,11 @@ def main() -> None:
     }
     for name, command in checks.items():
         path = Path(args.bin_dir) / name
-        os.system(f"{path} {command} >/dev/null")
+        subprocess.run(
+            [str(path), *command.split()],
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
 
 
 if __name__ == "__main__":
