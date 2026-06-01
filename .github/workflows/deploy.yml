@@ -1,0 +1,43 @@
+name: Manual Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Image tag to deploy
+        required: true
+        default: latest
+      namespace:
+        description: Kubernetes namespace
+        required: true
+        default: medical-qa
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: plan4-cluster
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Python dependencies
+        run: make install-pipeline
+
+      - name: Install deploy tools
+        run: make install-deploy-tools
+
+      - name: Authenticate to cluster in Plan 4
+        run: |
+          echo "Plan 4 supplies cloud auth and kubeconfig before helm upgrade."
+
+      - name: Helm upgrade app-serving charts
+        run: |
+          helm upgrade --install medical-qa-api deploy/helm/api --namespace "${{ inputs.namespace }}" --create-namespace --set image.tag="${{ inputs.image_tag }}"
+          helm upgrade --install medical-qa-retrieval deploy/helm/retrieval --namespace "${{ inputs.namespace }}" --set image.tag="${{ inputs.image_tag }}" --set initImage.tag="${{ inputs.image_tag }}"
+          helm upgrade --install medical-qa-nginx deploy/helm/nginx --namespace "${{ inputs.namespace }}"
+          helm upgrade --install medical-qa-kserve deploy/helm/kserve --namespace "${{ inputs.namespace }}" --set image.tag="${{ inputs.image_tag }}"
+
+      - name: Smoke tests
+        run: |
+          curl -fsS "$BASE_URL/health"
+          curl -fsS -H "x-api-key: $API_KEY" "$BASE_URL/health"
+          curl -fsS -X POST -H "x-api-key: $API_KEY" -H "content-type: application/json" "$BASE_URL/predict" -d '{"question":"Which drug is first-line for type 2 diabetes?","options":{"A":"Metformin","B":"Amoxicillin"}}'
