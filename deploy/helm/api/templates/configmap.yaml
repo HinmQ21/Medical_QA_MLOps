@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: medical-qa-api-config
+data:
+  MODEL_BACKEND: {{ .Values.env.modelBackend | quote }}
+  MODEL_VERSION: {{ .Values.env.modelVersion | quote }}
+  RETRIEVAL_URL: {{ .Values.env.retrievalUrl | quote }}
+  RUNPOD_BASE_URL: {{ .Values.env.runpodBaseUrl | quote }}
+  RUNPOD_MODEL: {{ .Values.env.runpodModel | quote }}
+  KSERVE_URL: {{ .Values.env.kserveUrl | quote }}
+  TOP_K: {{ .Values.env.topK | quote }}

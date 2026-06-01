@@ -1,0 +1,31 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/hinmq21/medical-qa-api
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  port: 8000
+
+env:
+  modelBackend: mock
+  modelVersion: smoke-dev
+  retrievalUrl: http://medical-qa-retrieval:8001
+  runpodBaseUrl: ""
+  runpodModel: ""
+  kserveUrl: http://medical-qa-kserve/v1/models/medical-qa-smoke:predict
+  topK: "5"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70

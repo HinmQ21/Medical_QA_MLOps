@@ -1,0 +1,6 @@
+apiVersion: v2
+name: medical-qa-api
+description: FastAPI pre/post-processing API for Medical QA
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
