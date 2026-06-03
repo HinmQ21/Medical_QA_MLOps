@@ -102,3 +102,104 @@ def stage1_5(cfg: FullPipelineConfig, p: dict[str, Path]) -> StageSpec:
         tags={"stage": "stage1_5", "model_family": cfg.model_family},
         artifact_pointers={"merged": str(p["stage1_5_merged"])},
     )
+
+
+def stage2(cfg: FullPipelineConfig, p: dict[str, Path]) -> StageSpec:
+    s2 = cfg.stage2
+    venv = str(cfg.vllm_venv) if s2.get("use_vllm") else str(cfg.train_venv)
+    train = [
+        venv, "-m", "scripts.train_rl.grpo_train_vllm",
+        "--model-path", str(p["stage1_5_merged"]),
+        "--model-family", cfg.model_family,
+        "--data-dir", str(p["kg_dir"]),
+        "--output-dir", str(p["stage2_out"]),
+        "--lora-r", str(s2["lora_r"]),
+        "--lora-alpha", str(s2["lora_alpha"]),
+        "--num-generations", str(s2["num_generations"]),
+        "--report-to", cfg.report_to,
+    ]
+    if s2.get("variant") == "gdpo":
+        train.append("--use-gdpo")
+    if s2.get("use_vllm"):
+        train += ["--use-vllm", "--vllm-gpu-mem-util", str(s2["vllm_gpu_mem_util"])]
+    if "max_steps" in cfg.caps:
+        train += ["--max-steps", str(cfg.caps["max_steps"])]
+    if "max_train_samples" in cfg.caps:
+        train += ["--max-train-samples", str(cfg.caps["max_train_samples"])]
+    merge = [
+        str(cfg.train_venv), "-m", "scripts.finetune.merge_peft_adapter",
+        "--base-model-path", str(p["stage1_5_merged"]),
+        "--adapter-path", str(p["stage2_adapter"]),
+        "--output-dir", str(p["stage2_merged"]),
+    ]
+    return StageSpec(
+        name="stage2",
+        commands=[train, merge],
+        cwd=str(cfg.baseline_root),
+        params={"variant": s2.get("variant"), "num_generations": s2["num_generations"], "lora_alpha": s2["lora_alpha"]},
+        tags={"stage": "stage2", "variant": s2.get("variant"), "model_family": cfg.model_family},
+        artifact_pointers={"merged": str(p["stage2_merged"])},
+    )
+
+
+def eval_stage(cfg: FullPipelineConfig, p: dict[str, Path]) -> StageSpec:
+    ev = cfg.eval
+    venv = str(cfg.vllm_venv) if ev.get("use_vllm") else str(cfg.train_venv)
+    argv = [
+        venv, "-m", "scripts.benchmark.grpo_eval.grpo_eval",
+        "--model-path", str(p["stage2_merged"]),
+        "--model-family", cfg.model_family,
+        "--data-dir", str(p["kg_dir"]),
+        "--benchmarks", *ev["benchmarks"],
+        "--output", str(p["eval_out"]),
+    ]
+    if ev.get("use_vllm"):
+        argv += ["--use-vllm", "--vllm-gpu-mem", str(ev["vllm_gpu_mem"])]
+    if "n_samples" in cfg.caps:
+        argv += ["--n-samples", str(cfg.caps["n_samples"])]
+    return StageSpec(
+        name="eval",
+        commands=[argv],
+        cwd=str(cfg.baseline_root),
+        params={"benchmarks": ev["benchmarks"], "use_vllm": ev.get("use_vllm", False)},
+        tags={"stage": "eval", "model_family": cfg.model_family},
+        artifact_pointers={"eval_json": str(p["eval_out"])},
+        eval_metrics_path=str(p["eval_out"]),
+    )
+
+
+def register_stage(cfg: FullPipelineConfig, p: dict[str, Path]) -> StageSpec:
+    return StageSpec(
+        name="register",
+        commands=[],  # in-process registration handled by run_full
+        cwd=str(cfg.baseline_root),
+        params={"registered_model_name": cfg.registered_model_name, "kg_version": cfg.kg_version},
+        tags={"stage": "register", "model_family": cfg.model_family},
+        artifact_pointers={"model": str(p["stage2_merged"]), "eval_json": str(p["eval_out"])},
+    )
+
+
+def parse_eval_metrics(eval_json_path: str) -> dict[str, float]:
+    """Flatten the eval JSON's per-benchmark numeric fields to MLflow metric keys."""
+    data = json.loads(Path(eval_json_path).read_text())
+    metrics: dict[str, float] = {}
+    for bench, bench_data in data.get("benchmarks", {}).items():
+        if not isinstance(bench_data, dict):
+            continue
+        safe = bench.replace("/", "_")
+        for key, value in bench_data.items():
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                metrics[f"{safe}.{key}"] = float(value)
+    return metrics
+
+
+BUILDERS = {
+    "build_kg": build_kg,
+    "stage1": stage1,
+    "stage1_5": stage1_5,
+    "stage2": stage2,
+    "eval": eval_stage,
+    "register": register_stage,
+}
+
+STAGE_ORDER = ["build_kg", "stage1", "stage1_5", "stage2", "eval", "register"]
