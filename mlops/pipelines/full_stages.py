@@ -180,14 +180,21 @@ def register_stage(cfg: FullPipelineConfig, p: dict[str, Path]) -> StageSpec:
 
 
 def parse_eval_metrics(eval_json_path: str) -> dict[str, float]:
-    """Flatten the eval JSON's per-benchmark numeric fields to MLflow metric keys."""
+    """Flatten the eval JSON's per-benchmark numeric metrics to MLflow metric keys.
+
+    grpo_eval writes benchmarks[<bench>]["metrics"] = {<name>: number|null};
+    null entries (e.g. accuracy_with_tool when no tool calls) are skipped.
+    """
     data = json.loads(Path(eval_json_path).read_text())
     metrics: dict[str, float] = {}
     for bench, bench_data in data.get("benchmarks", {}).items():
         if not isinstance(bench_data, dict):
             continue
+        bench_metrics = bench_data.get("metrics", {})
+        if not isinstance(bench_metrics, dict):
+            continue
         safe = bench.replace("/", "_")
-        for key, value in bench_data.items():
+        for key, value in bench_metrics.items():
             if isinstance(value, (int, float)) and not isinstance(value, bool):
                 metrics[f"{safe}.{key}"] = float(value)
     return metrics

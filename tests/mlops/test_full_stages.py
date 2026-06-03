@@ -126,19 +126,29 @@ def test_register_stage_records_model_and_tags():
 
 
 def test_parse_eval_metrics_flattens_benchmarks(tmp_path):
+    # Mirrors the real grpo_eval schema: benchmarks[<b>]["metrics"] = {<name>: num|null}
     import json
     eval_json = tmp_path / "eval.json"
     eval_json.write_text(json.dumps({
         "model_path": "x",
         "benchmarks": {
-            "MedQA/test": {"accuracy": 0.6, "n": 100, "answer_rate": 0.95},
-            "PubMedQA/train": {"accuracy": 0.73},
+            "MedQA/test": {
+                "metrics": {
+                    "accuracy_overall": 0.6,
+                    "n_samples": 100,
+                    "accuracy_with_tool": None,
+                },
+                "per_sample": [{"idx": 0, "is_correct": True}],
+            },
+            "PubMedQA/train": {"metrics": {"accuracy_overall": 0.73}},
         },
     }))
     metrics = full_stages.parse_eval_metrics(str(eval_json))
-    assert metrics["MedQA_test.accuracy"] == 0.6
-    assert metrics["MedQA_test.n"] == 100.0
-    assert metrics["PubMedQA_train.accuracy"] == 0.73
+    assert metrics["MedQA_test.accuracy_overall"] == 0.6
+    assert metrics["MedQA_test.n_samples"] == 100.0
+    assert metrics["PubMedQA_train.accuracy_overall"] == 0.73
+    assert "MedQA_test.accuracy_with_tool" not in metrics  # null skipped
+    assert not any(k.startswith("MedQA_test.per_sample") for k in metrics)
 
 
 def dataclasses_replace_variant(cfg, variant):
