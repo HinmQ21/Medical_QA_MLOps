@@ -24,7 +24,9 @@ def test_params_yaml_defines_smoke_profile_paths():
 def test_dvc_yaml_has_expected_smoke_stages():
     dvc = yaml.safe_load((ROOT / "dvc.yaml").read_text())
     stages = dvc["stages"]
-    assert set(stages) == {"build_kg_smoke", "eval_smoke", "register_smoke_model"}
+    # smoke stages must remain present and unchanged; the full pipeline (SP3)
+    # adds further `full_*` stages alongside them, so this is a subset check.
+    assert {"build_kg_smoke", "eval_smoke", "register_smoke_model"} <= set(stages)
     assert stages["build_kg_smoke"]["cmd"] == (
         ".venv/bin/python -m mlops.pipelines.build_smoke_kg --profile smoke"
     )
