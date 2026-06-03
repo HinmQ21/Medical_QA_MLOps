@@ -95,3 +95,95 @@ def expansion_priority(
         + EXP_W_ENTITY_MATCH * entity_match
         + EXP_W_ANCHOR * anchor_bonus
     )
+
+
+def _blank_candidate():
+    return {
+        "he_rank": None,
+        "he_sim": 0.0,
+        "ent_rank": None,
+        "ent_sim": 0.0,
+        "exp_rank": None,
+        "exp_score": 0.0,
+    }
+
+
+def fuse_candidates(
+    *,
+    he_hits,
+    ent_hits,
+    hedge_meta,
+    hedge_token_sets,
+    entity_token_sets,
+    entity_to_hedges,
+    query_tokens,
+    top_k=DEFAULT_TOP_K,
+    per_entity_limit=PER_ENTITY_LIMIT,
+):
+    """Return ranked hyperedge ids, byte-for-byte matching retrieve_v1.
+
+    he_hits: list of (rank, hid, sim) in original FAISS order, already filtered
+        to valid indices present in hedge_meta.
+    ent_hits: list of (rank, entity_name, sim) in original FAISS order, filtered
+        only to valid indices (the no-related-hedges check happens here).
+    Candidate insertion order (hyperedge hits first, then expansion order) is
+    preserved so that the stable descending sort breaks ties identically to
+    the reference ranker.
+    """
+    candidates = {}
+
+    for rank, hid, sim in he_hits:
+        cand = candidates.setdefault(hid, _blank_candidate())
+        cand["he_rank"] = rank
+        cand["he_sim"] = max(cand["he_sim"], sim)
+
+    for ent_rank, entity_name, ent_sim in ent_hits:
+        related_hids = entity_to_hedges.get(entity_name, [])
+        if not related_hids:
+            continue
+        expanded = []
+        for hid in related_hids:
+            if hid not in hedge_meta:
+                continue
+            expanded.append(
+                (
+                    expansion_priority(
+                        query_tokens,
+                        entity_name,
+                        ent_sim,
+                        hid,
+                        hedge_meta,
+                        hedge_token_sets,
+                        entity_token_sets,
+                    ),
+                    hid,
+                )
+            )
+        expanded.sort(key=lambda x: x[0], reverse=True)
+        for exp_rank, (exp_score, hid) in enumerate(expanded[:per_entity_limit]):
+            cand = candidates.setdefault(hid, _blank_candidate())
+            cand["ent_rank"] = ent_rank if cand["ent_rank"] is None else min(cand["ent_rank"], ent_rank)
+            cand["ent_sim"] = max(cand["ent_sim"], ent_sim)
+            cand["exp_rank"] = exp_rank if cand["exp_rank"] is None else min(cand["exp_rank"], exp_rank)
+            cand["exp_score"] = max(cand["exp_score"], exp_score)
+
+    ranked = []
+    for hid, cand in candidates.items():
+        lexical = lexical_score(query_tokens, hedge_token_sets.get(hid, set()))
+        meta = hedge_meta[hid]
+        names = [meta.get("anchor", ""), *meta.get("entities", [])]
+        entity_match = entity_match_score(query_tokens, names, entity_token_sets)
+        final_score = (
+            W_HE_SIM * cand["he_sim"]
+            + W_ENT_SIM * cand["ent_sim"]
+            + W_HE_RRF * rrf(cand["he_rank"])
+            + W_ENT_RRF * rrf(cand["ent_rank"])
+            + W_EXP_RRF * rrf(cand["exp_rank"])
+            + W_EXP_SCORE * min(1.0, cand["exp_score"])
+            + W_LEXICAL * lexical
+            + W_ENTITY_MATCH * entity_match
+        )
+        ranked.append((final_score, hid))
+
+    ranked.sort(key=lambda x: x[0], reverse=True)
+    return [hid for _, hid in ranked[:top_k]]
