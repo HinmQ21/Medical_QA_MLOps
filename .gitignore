@@ -7,3 +7,4 @@ __pycache__/
 /.dvc/cache/
 /.worktrees/
 /.tools/
+mlruns/

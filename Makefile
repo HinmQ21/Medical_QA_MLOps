@@ -7,7 +7,7 @@ DEPLOY_TOOLS_DIR := .tools
 HELM := $(DEPLOY_TOOLS_DIR)/bin/helm
 KUBECTL := $(DEPLOY_TOOLS_DIR)/bin/kubectl
 
-.PHONY: install install-pipeline install-deploy-tools test smoke-pipeline smoke-pipeline-local mlflow-register-dry-run register-model dvc-status helm-lint helm-template helm-dry-run docker-build
+.PHONY: install install-pipeline install-deploy-tools test smoke-pipeline smoke-pipeline-local mlflow-register-dry-run register-model dvc-status helm-lint helm-template helm-dry-run docker-build full-pipeline full-pipeline-dry-run smoke-full
 
 .venv:
 	python3.12 -m venv .venv
@@ -66,3 +66,12 @@ docker-build:
 	docker buildx build --platform linux/amd64 -f docker/retrieval.Dockerfile -t medical-qa-retrieval:local --load .
 	docker buildx build --platform linux/amd64 -f docker/kserve-mock.Dockerfile -t medical-qa-kserve-mock:local --load .
 	docker buildx build --platform linux/amd64 -f docker/pipeline-init.Dockerfile -t medical-qa-pipeline-init:local --load .
+
+full-pipeline-dry-run:
+	$(PY) -m mlops.pipelines.run_full --profile full --dry-run
+
+full-pipeline:
+	$(PY) -m mlops.pipelines.run_full --profile full
+
+smoke-full:
+	$(PY) -m mlops.pipelines.run_full --profile smoke_full
