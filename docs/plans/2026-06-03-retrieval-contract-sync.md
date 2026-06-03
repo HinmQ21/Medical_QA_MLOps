@@ -121,14 +121,14 @@ Expected: FAIL — `ModuleNotFoundError: No module named 'medical_qa_platform.re
 Create `src/medical_qa_platform/retrieval/ranker.py`:
 
 ```python
-"""Pure retrieval ranking logic ported from baseline retrieve_v1.
+"""Pure retrieval ranking logic ported from the reference retrieve_v1 ranker.
 
 No faiss / sentence-transformers imports: this module operates on FAISS
 outputs that have already been resolved to (rank, hid/name, score) hits plus
 plain-Python KG metadata, so it is fully unit-testable and CI-verifiable.
 
-Behavioral parity with baseline/scripts/serve/retrieval_tool.py::retrieve_v1
-is the contract. See docs/specs/2026-06-03-retrieval-contract-sync-design.md.
+Behavioral parity with the reference retrieve_v1 ranker is the contract.
+See docs/specs/2026-06-03-retrieval-contract-sync-design.md.
 """
 
 import re
@@ -143,7 +143,7 @@ STOPWORDS = {
 
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
 
-# Final fusion weights (sum to 1.10, matching baseline retrieve_v1 verbatim).
+# Final fusion weights (sum to 1.10, matching the reference retrieve_v1 verbatim).
 W_HE_SIM = 0.41
 W_ENT_SIM = 0.14
 W_HE_RRF = 0.14
@@ -460,8 +460,8 @@ Create `src/medical_qa_platform/retrieval/contract.py`:
 ```python
 """The retrieval contract: tool-response formatting + contract version.
 
-format_evidence reproduces the exact string baseline search_medical_knowledge
-returns, so the tokens the model sees at serving time match training.
+format_evidence reproduces the exact string the reference search_medical_knowledge
+tool returns, so the tokens the model sees at serving time match training.
 """
 
 RETRIEVAL_CONTRACT_VERSION = "v1-medembed-large"
@@ -1084,10 +1084,11 @@ New:
 """Build chat messages for the medical MCQ task.
 
 SYSTEM_PROMPT is kept verbatim in sync with the canonical training/eval prompt
-(baseline/scripts/train_rl/data_prep.py::SYSTEM_PROMPT) so the model sees at
-serving time the exact system message it was trained against. The structural
-difference between single-shot evidence injection here and the agentic tool
-round-trip used in training is tracked as a separate sub-project.
+(the reference data-prep SYSTEM_PROMPT; see docs/specs/2026-06-03-retrieval-contract-sync-design.md)
+so the model sees at serving time the exact system message it was trained
+against. The structural difference between single-shot evidence injection here
+and the agentic tool round-trip used in training is tracked as a separate
+sub-project.
 """
 
 SYSTEM_PROMPT = (
@@ -1150,4 +1151,5 @@ git status
 - **Tie-breaking parity** depends on candidate insertion order (hyperedge hits first, then expansion order) feeding Python's stable descending sort. Do not reorder the loops in `fuse_candidates`.
 - **No new tokenizer tokens, no encoder change** in SP1 — the encoder swap is SP2, which will bump `RETRIEVAL_CONTRACT_VERSION` and regenerate the golden.
 - **`entity_type_by_name`** (listed among the spec's load-time structures) is intentionally **not** built: baseline `retrieve_v1` never references it, so it would be dead state. Confirm before adding it back if a later stage needs it.
-- **Baseline prompt agreement:** the canonical `SYSTEM_PROMPT` lives in three baseline files (`data_prep.py`, `sft_train.py`, `grpo_eval.py`) and must agree per the project's working rules. If they diverge, surface it as a pre-existing baseline bug rather than silently picking one.
+- **Baseline prompt agreement:** the canonical `SYSTEM_PROMPT` lives in three reference files (`data_prep.py`, `sft_train.py`, `grpo_eval.py`) and must agree per the project's working rules. If they diverge, surface it as a pre-existing reference bug rather than silently picking one.
+- **Self-contained guard:** `tests/retrieval/test_kg_backend_self_contained.py` forbids the literal tokens `baseline`, `BASELINE_ROOT`, `scripts.serve`, `MedicalKnowledgeTool`, `/home/vcsai/minhlbq` anywhere under `src/medical_qa_platform/**` — including docstrings/comments. After creating or editing any `src/` file, run that guard. (`scripts/gen_retrieval_golden.py` lives outside `src/` and is exempt; it may reference the reference tree.)

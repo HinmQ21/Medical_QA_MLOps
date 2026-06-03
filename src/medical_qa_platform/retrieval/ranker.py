@@ -1,11 +1,11 @@
-"""Pure retrieval ranking logic ported from baseline retrieve_v1.
+"""Pure retrieval ranking logic ported from the reference retrieve_v1 ranker.
 
 No faiss / sentence-transformers imports: this module operates on FAISS
 outputs that have already been resolved to (rank, hid/name, score) hits plus
 plain-Python KG metadata, so it is fully unit-testable and CI-verifiable.
 
-Behavioral parity with baseline/scripts/serve/retrieval_tool.py::retrieve_v1
-is the contract. See docs/specs/2026-06-03-retrieval-contract-sync-design.md.
+Behavioral parity with the reference retrieve_v1 ranker is the contract.
+See docs/specs/2026-06-03-retrieval-contract-sync-design.md.
 """
 
 import re
@@ -20,7 +20,7 @@ STOPWORDS = {
 
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
 
-# Final fusion weights (sum to 1.10, matching baseline retrieve_v1 verbatim).
+# Final fusion weights (sum to 1.10, matching the reference retrieve_v1 verbatim).
 W_HE_SIM = 0.41
 W_ENT_SIM = 0.14
 W_HE_RRF = 0.14
