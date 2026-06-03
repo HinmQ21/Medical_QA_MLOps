@@ -33,3 +33,65 @@ stages:
       - params.yaml
     outs:
       - artifacts/smoke/mlflow_register_dry_run.json
+
+  full_build_kg:
+    cmd: .venv/bin/python -m mlops.pipelines.run_full --profile full --stages build_kg
+    deps:
+      - mlops/pipelines/run_full.py
+      - mlops/pipelines/full_stages.py
+      - mlops/pipelines/full_config.py
+      - params.yaml
+    outs:
+      - artifacts/full/kg:
+          cache: false
+
+  full_stage1:
+    cmd: .venv/bin/python -m mlops.pipelines.run_full --profile full --stages stage1
+    deps:
+      - mlops/pipelines/full_stages.py
+      - params.yaml
+    outs:
+      - artifacts/full/outputs/stage1:
+          cache: false
+
+  full_stage1_5:
+    cmd: .venv/bin/python -m mlops.pipelines.run_full --profile full --stages stage1_5
+    deps:
+      - mlops/pipelines/full_stages.py
+      - params.yaml
+      - artifacts/full/outputs/stage1
+    outs:
+      - artifacts/full/outputs/stage1_5_merged:
+          cache: false
+
+  full_stage2:
+    cmd: .venv/bin/python -m mlops.pipelines.run_full --profile full --stages stage2
+    deps:
+      - mlops/pipelines/full_stages.py
+      - params.yaml
+      - artifacts/full/outputs/stage1_5_merged
+      - artifacts/full/kg
+    outs:
+      - artifacts/full/outputs/stage2_merged:
+          cache: false
+
+  full_eval:
+    cmd: .venv/bin/python -m mlops.pipelines.run_full --profile full --stages eval
+    deps:
+      - mlops/pipelines/full_stages.py
+      - params.yaml
+      - artifacts/full/outputs/stage2_merged
+      - artifacts/full/kg
+    outs:
+      - artifacts/full/eval/eval.json:
+          cache: false
+
+  full_register:
+    cmd: .venv/bin/python -m mlops.pipelines.run_full --profile full --stages register
+    deps:
+      - mlops/pipelines/run_full.py
+      - params.yaml
+      - artifacts/full/eval/eval.json
+    outs:
+      - artifacts/full/run_full_receipt.json:
+          cache: false
