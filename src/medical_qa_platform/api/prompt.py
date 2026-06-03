@@ -1,13 +1,24 @@
 """Build chat messages for the medical MCQ task.
 
-NOTE: SYSTEM_PROMPT must be reconciled with the canonical eval prompt before the
-real-model demo. For mock/local testing the exact wording is not asserted.
+SYSTEM_PROMPT is kept verbatim in sync with the canonical training/eval prompt
+(the reference data-prep SYSTEM_PROMPT; see docs/specs/2026-06-03-retrieval-contract-sync-design.md)
+so the model sees at serving time the exact system message it was trained
+against. The structural difference between single-shot evidence injection here
+and the agentic tool round-trip used in training is tracked as a separate
+sub-project.
 """
 
 SYSTEM_PROMPT = (
-    "You are a medical question-answering assistant. Read the question and "
-    "options, reason step by step inside <think></think>, then give the single "
-    "best option letter inside <answer></answer>."
+    "You are a medical reasoning assistant with access to a "
+    "search_medical_knowledge tool.\n\n"
+    "Structure your response in this order:\n"
+    "1. <think>Your initial reasoning about the question</think>\n"
+    "2. (Optional) If you need to verify a medical fact, call "
+    "search_medical_knowledge, then add another <think>...</think> "
+    "incorporating the result.\n"
+    "3. <answer>Your final answer</answer>\n\n"
+    "IMPORTANT: In <answer> tags, write ONLY the option letter (e.g. A) "
+    "or a short answer, NOT an explanation."
 )
 
 
