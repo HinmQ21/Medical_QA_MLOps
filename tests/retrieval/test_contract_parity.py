@@ -51,3 +51,31 @@ def test_fuse_candidates_reproduces_baseline_retrieve_v1():
         )
         got = [hedge_meta[hid]["description"] for hid in ranked_hids]
         assert got == case["expected_ranked_descriptions"], f"mismatch for query: {case['query']!r}"
+
+
+import os
+
+RUNTIME_DATA_DIR = os.environ.get("KG_DATA_DIR")
+
+
+@pytest.mark.runtime
+@pytest.mark.skipif(
+    not RUNTIME_DATA_DIR or not Path(RUNTIME_DATA_DIR).exists(),
+    reason="set KG_DATA_DIR to a real KG artifact dir (with [runtime] extra) to run L2 parity",
+)
+def test_full_kgretrieval_matches_baseline_on_real_artifacts():
+    """End-to-end parity: full KGRetrieval (incl. encode + faiss) vs the golden.
+
+    Runs on CPU only (RETRIEVAL_DEVICE=cpu) to avoid float nondeterminism.
+    Uses the golden queries + expected descriptions as the oracle.
+    """
+    os.environ.setdefault("RETRIEVAL_DEVICE", "cpu")
+    from medical_qa_platform.retrieval.kg_backend import KGRetrieval
+
+    fixture = _load_golden()
+    top_k = fixture["manifest"]["top_k"]
+    backend = KGRetrieval(data_dir=RUNTIME_DATA_DIR, device="cpu")
+
+    for case in fixture["cases"]:
+        got = backend.search(case["query"], top_k=top_k)
+        assert got == case["expected_ranked_descriptions"], f"mismatch for query: {case['query']!r}"

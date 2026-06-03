@@ -40,6 +40,9 @@ where = ["src"]
 testpaths = ["tests"]
 addopts = "-q"
 pythonpath = ["."]
+markers = [
+    "runtime: tests needing the [runtime] extra (faiss/sentence-transformers) and real KG artifacts; skipped by default",
+]
 
 [tool.coverage.run]
 source = ["medical_qa_platform"]
