@@ -69,12 +69,26 @@ make full-pipeline  (or: dvc repro)
    deploy is Plan 5.
 4. **Encoder-agnostic build_kg:** the `build_kg` stage is parameterised by the
    encoder, so SP2's encoder swap is a config change, not a code change here.
+5. **Defaults:** the `full` profile defaults to `model_family: qwen` and Stage 2
+   `variant: grpo` with vLLM rollout (both are config and trivially switchable to
+   `llama`/`gdpo`).
+6. **Artifact ownership — everything mlops produces lives under
+   `mlops-platform/`:** an `artifact_root` (`artifacts/full/` for `full`,
+   `artifacts/smoke_full/` for `smoke_full`) holds the pipeline-built KG
+   (`artifact_root/kg`), all stage checkpoints (`artifact_root/outputs/<stage>`,
+   passed as each baseline script's `--output-dir`/`--data-dir`), eval JSON,
+   per-stage logs, and receipts. MLflow uses `mlops-platform/mlruns/`. **Inputs**
+   that inherently belong to the reference tree — base model weights
+   (`baseline/models/...`), raw benchmark datasets (`baseline/dataset/...`), and
+   the teacher SFT traces (`baseline/data/stage1_5_sft_v2.jsonl`) — are **read**
+   from `baseline/` (they are inputs, not outputs). `artifacts/` and `mlruns/`
+   are generated and git-ignored.
 
 ## Architecture & Components
 
 | File | Responsibility |
 |------|----------------|
-| `params.yaml` (+`full`, +`smoke_full`) | Full-pipeline config: `baseline_root`, `train_venv`/`vllm_venv` paths, `model_family` (qwen\|llama), `kg_version`; per-stage section (build_kg: encoder/data-dir/out; stage1: model-path/out; stage1_5: data-path/out; stage2: variant grpo\|gdpo/use_vllm/num_generations/out; eval: benchmarks list/use_vllm/out; register: registered_model_name). `smoke_full` = same shape, tiny (`max_steps`, `max_eval_samples`, throwaway out dirs). |
+| `params.yaml` (+`full`, +`smoke_full`) | Full-pipeline config: `baseline_root`, `train_venv`/`vllm_venv` paths, `artifact_root` (under `mlops-platform/`), `mlruns_dir`, `model_family` (default `qwen`), `kg_version`; per-stage section (build_kg: encoder/kg-out-dir; stage1: base-model-path/out; stage1_5: sft-data-path/out; stage2: variant default `grpo`/use_vllm/num_generations/out; eval: benchmarks list/use_vllm/out; register: registered_model_name). Produced paths (KG, checkpoints, eval JSON) resolve under `artifact_root`; base models / datasets / SFT traces are read from `baseline/`. `smoke_full` = same shape, tiny (`max_steps`, `max_eval_samples`, `artifacts/smoke_full/`). |
 | `mlops/pipelines/full_config.py` | `FullPipelineConfig` dataclass + `load_full_config(name, params_path)`. Separate from `PipelineProfile` (smoke) — different shape. |
 | `mlops/pipelines/stage_runner.py` | `StageSpec(name, commands, cwd, env, params, tags, artifact_pointers, metrics_parser)` where `commands` is a list of argv lists (most stages = 1; `stage1_5`/`stage2` = train + merge). `run_stage(spec, dry_run, mlflow_parent)`: dry-run → return/record a receipt (the resolved argv + intended MLflow payload), no subprocess/mlflow; real → run each command (tee stdout to a per-stage log), parse metrics, log a nested MLflow run. |
 | `mlops/pipelines/full/stages.py` | Six builders returning `StageSpec`, matching the canonical commands in CLAUDE.md, branching on `model_family`: `build_kg`, `stage1`, `stage1_5` (Llama: `convert_data_llama` → `sft_train` → `merge`; Qwen: `sft_train` → `merge`), `stage2` (`grpo_train_vllm` [+`--use-gdpo`] → `merge`), `eval` (`grpo_eval`), `register`. |
