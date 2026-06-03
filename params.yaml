@@ -10,3 +10,80 @@ smoke:
   model_backend: mock
   model_version: smoke-dev
   registered_model_name: medical-qa-smoke
+
+full:
+  baseline_root: /home/vcsai/minhlbq/baseline
+  train_venv: training_venv312/bin/python
+  vllm_venv: vllm_venv312/bin/python
+  artifact_root: artifacts/full
+  mlruns_dir: mlruns
+  experiment: medical-qa-full
+  registered_model_name: medical-qa-full
+  model_family: qwen
+  kg_version: v0
+  report_to: none
+  build_kg:
+    embed_model: abhinand/MedEmbed-large-v0.1
+    embed_device: cpu
+  stage1:
+    base_model: models/Qwen2.5-3B-Instruct
+  stage1_5:
+    sft_data: data/stage1_5_sft_v2.jsonl
+    lora_r: 32
+    lora_alpha: 32
+  stage2:
+    variant: grpo
+    use_vllm: true
+    vllm_gpu_mem_util: 0.5
+    num_generations: 8
+    lora_r: 32
+    lora_alpha: 64
+  eval:
+    benchmarks:
+      - dataset/MedQA/test
+      - dataset/MedMCQA_4options_fixed/validation
+      - dataset/PubMedQA/train
+      - dataset/MedXpertQA_Text/test
+    use_vllm: true
+    vllm_gpu_mem: 0.6
+  caps: {}
+
+smoke_full:
+  baseline_root: /home/vcsai/minhlbq/baseline
+  train_venv: training_venv312/bin/python
+  vllm_venv: vllm_venv312/bin/python
+  artifact_root: artifacts/smoke_full
+  mlruns_dir: mlruns
+  experiment: medical-qa-smoke-full
+  registered_model_name: medical-qa-smoke-full
+  model_family: qwen
+  kg_version: v0
+  report_to: none
+  build_kg:
+    embed_model: abhinand/MedEmbed-large-v0.1
+    embed_device: cpu
+  stage1:
+    base_model: models/Qwen2.5-3B-Instruct
+  stage1_5:
+    sft_data: data/stage1_5_sft_v2.jsonl
+    lora_r: 32
+    lora_alpha: 32
+  stage2:
+    variant: grpo
+    use_vllm: true
+    vllm_gpu_mem_util: 0.5
+    num_generations: 4
+    lora_r: 32
+    lora_alpha: 64
+  eval:
+    benchmarks:
+      - dataset/MedQA/test
+    use_vllm: true
+    vllm_gpu_mem: 0.6
+  caps:
+    max_train_samples: 8
+    max_eval_samples: 4
+    num_train_epochs: 1
+    save_steps: 1
+    max_steps: 2
+    n_samples: 4
