@@ -22,7 +22,7 @@ spec:
             - name: API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: medical-qa-nginx-api-key
+                  name: {{ .Values.auth.existingSecret | default "medical-qa-nginx-api-key" }}
                   key: API_KEY
           ports:
             - name: http

@@ -1,0 +1,5 @@
+auth:
+  existingSecret: medical-qa-nginx-api-key
+
+service:
+  type: LoadBalancer

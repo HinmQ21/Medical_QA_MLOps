@@ -3,7 +3,7 @@ kind: Service
 metadata:
   name: medical-qa-nginx
 spec:
-  type: ClusterIP
+  type: {{ .Values.service.type }}
   selector:
     app.kubernetes.io/name: medical-qa-nginx
   ports:
