@@ -19,21 +19,31 @@ def _all_run_commands(workflow: dict) -> str:
     return "\n".join(commands)
 
 
-def test_ci_workflow_runs_tests_helm_checks_and_builds_images():
+def test_ci_runs_tests_then_builds_all_images_in_parallel():
     workflow = _workflow("ci.yml")
-    commands = _all_run_commands(workflow)
-    assert "make install-pipeline" in commands
-    assert "make install-deploy-tools" in commands
-    assert "make helm-lint" in commands
-    assert "make helm-template" in commands
-    assert "--cov-fail-under=80" in commands
-    assert "docker/api.Dockerfile" in commands
-    assert "docker/retrieval.Dockerfile" in commands
-    assert "docker/kserve-mock.Dockerfile" in commands
-    assert "docker/pipeline-init.Dockerfile" in commands
-    # GHA layer cache + build each image exactly once (no separate load-then-push rebuild)
-    assert "type=gha" in commands
-    assert commands.count("docker buildx build") == 4
+    jobs = workflow["jobs"]
+
+    # test job runs the suite + helm checks
+    test_cmds = "\n".join(s["run"] for s in jobs["test"]["steps"] if "run" in s)
+    assert "make install-pipeline" in test_cmds
+    assert "make install-deploy-tools" in test_cmds
+    assert "make helm-lint" in test_cmds
+    assert "make helm-template" in test_cmds
+    assert "--cov-fail-under=80" in test_cmds
+
+    # build job is a parallel matrix over the four images, gated on the test job
+    build = jobs["build"]
+    assert "test" in build["needs"]  # builds only after tests pass
+    dockerfiles = {entry["dockerfile"] for entry in build["strategy"]["matrix"]["include"]}
+    assert dockerfiles == {
+        "docker/api.Dockerfile",
+        "docker/retrieval.Dockerfile",
+        "docker/kserve-mock.Dockerfile",
+        "docker/pipeline-init.Dockerfile",
+    }
+    build_cmds = "\n".join(s["run"] for s in build["steps"] if "run" in s)
+    assert "type=gha" in build_cmds  # layer cache
+    assert "docker buildx build" in build_cmds
 
 
 def test_deploy_workflow_auto_runs_after_ci_and_guards_cluster():

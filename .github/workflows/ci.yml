@@ -9,11 +9,8 @@ env:
   REGISTRY: ghcr.io/hinmq21
 
 jobs:
-  test-build:
+  test:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
     steps:
       - uses: actions/checkout@v4
 
@@ -36,6 +33,27 @@ jobs:
       - name: Pytest
         run: .venv/bin/pytest --cov=medical_qa_platform --cov-report=term-missing --cov-fail-under=80
 
+  # Build the four images in parallel (one matrix job each), only after tests
+  # pass. Each builds exactly once with a per-image GHA layer cache; on main it
+  # pushes (:sha + :latest), on PRs it just loads to validate. Wall-clock is the
+  # slowest single image, not the sum.
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { image: api, dockerfile: docker/api.Dockerfile }
+          - { image: retrieval, dockerfile: docker/retrieval.Dockerfile }
+          - { image: kserve-mock, dockerfile: docker/kserve-mock.Dockerfile }
+          - { image: pipeline-init, dockerfile: docker/pipeline-init.Dockerfile }
+    steps:
+      - uses: actions/checkout@v4
+
       - uses: docker/setup-buildx-action@v3
 
       - name: Login to GHCR
@@ -46,41 +64,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # On main: build once and push (:sha + :latest). On PRs: build once and load
-      # (validate only). GHA layer cache means unchanged dependency layers (CPU
-      # torch, faiss, etc.) are reused across runs instead of rebuilt every time.
-      - name: Select push vs load
+      - name: Build ${{ matrix.image }} image
         run: |
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            echo "PUSH=true" >> "$GITHUB_ENV"
+            OUT="-t $REGISTRY/medical-qa-${{ matrix.image }}:latest --push"
           else
-            echo "PUSH=false" >> "$GITHUB_ENV"
+            OUT="--load"
           fi
-
-      - name: Build API image
-        run: |
-          docker buildx build --platform linux/amd64 -f docker/api.Dockerfile \
-            --cache-from type=gha,scope=api --cache-to type=gha,mode=max,scope=api \
-            -t $REGISTRY/medical-qa-api:${{ github.sha }} \
-            $([ "$PUSH" = true ] && echo "-t $REGISTRY/medical-qa-api:latest --push" || echo "--load") .
-
-      - name: Build retrieval image
-        run: |
-          docker buildx build --platform linux/amd64 -f docker/retrieval.Dockerfile \
-            --cache-from type=gha,scope=retrieval --cache-to type=gha,mode=max,scope=retrieval \
-            -t $REGISTRY/medical-qa-retrieval:${{ github.sha }} \
-            $([ "$PUSH" = true ] && echo "-t $REGISTRY/medical-qa-retrieval:latest --push" || echo "--load") .
-
-      - name: Build KServe mock image
-        run: |
-          docker buildx build --platform linux/amd64 -f docker/kserve-mock.Dockerfile \
-            --cache-from type=gha,scope=kserve-mock --cache-to type=gha,mode=max,scope=kserve-mock \
-            -t $REGISTRY/medical-qa-kserve-mock:${{ github.sha }} \
-            $([ "$PUSH" = true ] && echo "-t $REGISTRY/medical-qa-kserve-mock:latest --push" || echo "--load") .
-
-      - name: Build DVC init image
-        run: |
-          docker buildx build --platform linux/amd64 -f docker/pipeline-init.Dockerfile \
-            --cache-from type=gha,scope=pipeline-init --cache-to type=gha,mode=max,scope=pipeline-init \
-            -t $REGISTRY/medical-qa-pipeline-init:${{ github.sha }} \
-            $([ "$PUSH" = true ] && echo "-t $REGISTRY/medical-qa-pipeline-init:latest --push" || echo "--load") .
+          docker buildx build --platform linux/amd64 -f ${{ matrix.dockerfile }} \
+            --cache-from type=gha,scope=${{ matrix.image }} \
+            --cache-to type=gha,mode=max,scope=${{ matrix.image }} \
+            -t $REGISTRY/medical-qa-${{ matrix.image }}:${{ github.sha }} \
+            $OUT .
