@@ -28,6 +28,17 @@ apply_secret() {
   fi
 }
 
+# Ensure the target namespace exists before creating the secret in it (idempotent).
+ensure_namespace() {
+  local cmd="kubectl create namespace $K8S_NAMESPACE --dry-run=client -o yaml | kubectl apply -f -"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    echo "+ $cmd"
+  else
+    kubectl create namespace "$K8S_NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+  fi
+}
+
+ensure_namespace
 apply_secret medical-qa-nginx-api-key \
   "--from-literal=API_KEY=$NGINX_API_KEY"
 

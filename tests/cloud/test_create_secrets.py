@@ -31,6 +31,18 @@ def test_dry_run_applies_nginx_secret_idempotently():
     assert "kubectl apply -f -" in o
 
 
+def test_dry_run_ensures_namespace_before_secret():
+    out = subprocess.run(
+        ["bash", str(SCRIPT), "--dry-run"], capture_output=True, text=True, env=ENV
+    )
+    o = out.stdout
+    assert "kubectl create namespace medical-qa" in o
+    # namespace must be ensured before the secret is created in it
+    assert o.index("create namespace medical-qa") < o.index(
+        "create secret generic medical-qa-nginx-api-key"
+    )
+
+
 def test_missing_api_key_fails_fast():
     env = {k: v for k, v in ENV.items() if k != "NGINX_API_KEY"}
     out = subprocess.run(
