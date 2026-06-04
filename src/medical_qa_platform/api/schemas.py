@@ -36,5 +36,6 @@ class PredictResponse(BaseModel):
     evidence: list[str]
     backend: str
     model_version: str
+    contract_version: str
     latency_ms: float
     trace_id: str

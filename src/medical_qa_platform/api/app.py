@@ -9,6 +9,7 @@ from ..config import Settings
 from ..drift.collector import DriftCollector
 from ..observability.metrics import observe_request, render_metrics
 from ..retrieval.backends import SupportsSearch
+from ..retrieval.contract import RETRIEVAL_CONTRACT_VERSION
 from .parser import parse_answer
 from .prompt import build_prompt
 from .schemas import PredictRequest, PredictResponse
@@ -75,6 +76,7 @@ def create_app(
             evidence=evidence,
             backend=app.state.backend.name,
             model_version=app.state.model_version,
+            contract_version=RETRIEVAL_CONTRACT_VERSION,
             latency_ms=latency_ms,
             trace_id=trace_id,
         )
@@ -91,5 +93,14 @@ def create_app(
     def metrics():
         body, content_type = render_metrics()
         return Response(content=body, media_type=content_type)
+
+    @app.get("/version")
+    def version():
+        backend = getattr(app.state, "backend", None)
+        return {
+            "contract_version": RETRIEVAL_CONTRACT_VERSION,
+            "model_version": app.state.model_version,
+            "backend": backend.name if backend is not None else None,
+        }
 
     return app

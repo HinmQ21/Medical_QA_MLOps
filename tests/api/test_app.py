@@ -78,3 +78,22 @@ def test_metrics_endpoint(tmp_path):
     client.post("/predict", json={"question": "Q?", "options": {"A": "a", "B": "b"}})
     resp = client.get("/metrics")
     assert "mqa_requests_total" in resp.text
+
+
+def test_predict_response_includes_contract_version(tmp_path):
+    from medical_qa_platform.retrieval.contract import RETRIEVAL_CONTRACT_VERSION
+
+    client = _client(tmp_path)
+    resp = client.post(
+        "/predict", json={"question": "Q?", "options": {"A": "a", "B": "b"}}
+    )
+    assert resp.json()["contract_version"] == RETRIEVAL_CONTRACT_VERSION
+
+
+def test_version_endpoint_reports_contract_and_model(tmp_path):
+    from medical_qa_platform.retrieval.contract import RETRIEVAL_CONTRACT_VERSION
+
+    body = _client(tmp_path).get("/version").json()
+    assert body["contract_version"] == RETRIEVAL_CONTRACT_VERSION
+    assert body["model_version"] == "test-v1"
+    assert body["backend"] == "mock"
