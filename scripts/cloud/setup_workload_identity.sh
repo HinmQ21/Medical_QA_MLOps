@@ -23,7 +23,7 @@ run() {
 
 run gcloud iam service-accounts create "$GSA_NAME" \
   --project "$GCP_PROJECT" \
-  --display-name "Medical QA retrieval (DVC pull)"
+  --display-name "Medical QA retrieval (DVC pull)" || true
 
 run gcloud storage buckets add-iam-policy-binding "gs://$DVC_BUCKET" \
   --member "serviceAccount:$GSA_EMAIL" \

@@ -39,7 +39,12 @@ BASE="http://${IP}:8080"
 PAYLOAD='{"question":"Which medication is first-line for type 2 diabetes?","options":{"A":"Metformin","B":"Amoxicillin"}}'
 
 run curl -fsS "$BASE/health"
-run curl -fsS -H "x-api-key: $NGINX_API_KEY" "$BASE/version"
-run curl -fsS -H "x-api-key: $NGINX_API_KEY" -H "content-type: application/json" \
-  -X POST "$BASE/predict" -d "$PAYLOAD"
+if [ "$DRY_RUN" -eq 1 ]; then
+  echo "+ curl -fsS -H \"x-api-key: $NGINX_API_KEY\" $BASE/version"
+  echo "+ curl -fsS -H \"x-api-key: $NGINX_API_KEY\" -H \"content-type: application/json\" -X POST $BASE/predict -d $PAYLOAD"
+else
+  curl -fsS -H "x-api-key: $NGINX_API_KEY" "$BASE/version" | grep -q '"contract_version"'
+  curl -fsS -H "x-api-key: $NGINX_API_KEY" -H "content-type: application/json" \
+    -X POST "$BASE/predict" -d "$PAYLOAD" | grep -q '"answer"'
+fi
 echo "Smoke test issued against $BASE."

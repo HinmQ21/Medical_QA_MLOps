@@ -54,6 +54,8 @@ export GITHUB_REPO=HinmQ21/Medical_QA_MLOps   # override if your fork differs
    bash scripts/cloud/setup_github_oidc.sh
    ```
 
+   > **Important:** `GITHUB_REPO` must match your repository's exact `owner/repo` slug **including casing** — it is embedded in the OIDC provider's attribute-condition and the principalSet binding. A casing mismatch makes every workflow's GCP auth fail with an opaque permission error.
+
    It prints three values. In GitHub → **Settings → Secrets and variables →
    Actions → Variables**, add:
    - `GCP_WIF_PROVIDER` = the printed provider resource name
@@ -101,3 +103,4 @@ gcloud storage rm -r "gs://${GCP_PROJECT}-medical-qa-dvc"
   backend; retrieval is real.
 - **RunPod (real 3B):** a future flip — set the api `modelBackend: runpod` + a
   RunPod secret; see the full Plan 4 spec.
+- **Note:** Keep the `Demo Up` `namespace` input at the default `medical-qa`. The retrieval pod's Workload Identity binding (`setup_workload_identity.sh`) is namespace-scoped; deploying into a different namespace requires re-running that bootstrap script for the new namespace, or the keyless `dvc pull` will fail.

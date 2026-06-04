@@ -31,7 +31,7 @@ fi
 run gcloud iam workload-identity-pools create "$WIF_POOL" \
   --project "$GCP_PROJECT" \
   --location global \
-  --display-name "GitHub Actions pool"
+  --display-name "GitHub Actions pool" || true
 
 run gcloud iam workload-identity-pools providers create-oidc "$WIF_PROVIDER" \
   --project "$GCP_PROJECT" \
@@ -40,12 +40,12 @@ run gcloud iam workload-identity-pools providers create-oidc "$WIF_PROVIDER" \
   --display-name "GitHub provider" \
   --issuer-uri "https://token.actions.githubusercontent.com" \
   --attribute-mapping "google.subject=assertion.sub,attribute.repository=assertion.repository" \
-  --attribute-condition "assertion.repository=='${GITHUB_REPO}'"
+  --attribute-condition "assertion.repository=='${GITHUB_REPO}'" || true
 
 # 2. Least-privilege deploy GSA (manages clusters + uses APIs; NOT storage/IAM admin).
 run gcloud iam service-accounts create "$DEPLOY_GSA_NAME" \
   --project "$GCP_PROJECT" \
-  --display-name "Medical QA GitHub deployer"
+  --display-name "Medical QA GitHub deployer" || true
 
 for role in roles/container.admin roles/serviceusage.serviceUsageAdmin; do
   run gcloud projects add-iam-policy-binding "$GCP_PROJECT" \
