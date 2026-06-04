@@ -123,7 +123,7 @@ CI/CD:
 | `provision_gke.sh` | recurring | Create the Autopilot cluster; `get-credentials`. *(Reused from Plan 4.)* |
 | `setup_gcs_dvc_remote.sh` | bootstrap | Create the GCS bucket; `dvc remote add`; `dvc push` the KG. *(Reused.)* |
 | `setup_workload_identity.sh` | bootstrap | Retrieval GSA + `storage.objectViewer` + `iam.workloadIdentityUser` binding to `[medical-qa/medical-qa-retrieval]`. *(Reused.)* |
-| `setup_github_oidc.sh` | bootstrap | **NEW.** Create the WIF pool + an OIDC provider scoped to the GitHub repo; create the **deploy GSA**; grant it least-privilege roles (`container.admin` for cluster create/delete + helm/kubectl; `serviceusage.serviceUsageConsumer`); bind the repo principal → deploy GSA via `iam.workloadIdentityUser`. Prints the provider resource name + GSA email for GitHub repo vars. |
+| `setup_github_oidc.sh` | bootstrap | **NEW.** Create the WIF pool + an OIDC provider scoped to the GitHub repo; create the **deploy GSA**; grant it the roles the workflows need (`container.admin` for cluster create/delete + helm/kubectl; `serviceusage.serviceUsageAdmin` so `demo-up`'s `gcloud services enable` is idempotent); bind the repo principal → deploy GSA via `iam.workloadIdentityUser`. Prints the provider resource name + GSA email for GitHub repo vars. |
 | `create_secrets.sh` | recurring | **nginx API key only** (`medical-qa-nginx-api-key`). RunPod secret removed. |
 | `deploy.sh` | recurring | `helm upgrade --install` retrieval (WI SA + bucket), api (**base/mock**, no overlay), nginx (`values-prod.yaml`: LoadBalancer + existingSecret), kserve. |
 | `smoke_cloud.sh` | recurring | Resolve the nginx LB IP; `/health`; authed `POST /predict` (assert a valid answer letter from the mock); `GET /version` (assert `contract_version`). *(Reused.)* |
@@ -173,9 +173,11 @@ GSA from repo **vars**.
 - **Retrieval GSA** (`medical-qa-retrieval@…`): `roles/storage.objectViewer` on the
   bucket only; used keylessly by the dvc-pull initContainer via WI.
 - **Deploy GSA** (used by all three workflows): `roles/container.admin` (create/delete
-  clusters; full helm/kubectl in-cluster) + `roles/serviceusage.serviceUsageConsumer`.
-  It does **not** get storage-admin or IAM-admin — bucket/GSA/WIF are created once by
-  the operator during bootstrap, so the CI identity cannot mutate IAM or data.
+  clusters; full helm/kubectl in-cluster) + `roles/serviceusage.serviceUsageAdmin`
+  (needed because `demo-up`'s `provision_gke.sh` runs `gcloud services enable`, which
+  `serviceUsageConsumer` cannot do). It does **not** get storage-admin or IAM-admin —
+  bucket/GSA/WIF are created once by the operator during bootstrap, so the CI identity
+  cannot mutate IAM or data.
 - **No SA keys** anywhere; the deploy GSA is reachable only from the configured
   GitHub repo via the OIDC provider's attribute condition (`repository ==` the repo).
 
