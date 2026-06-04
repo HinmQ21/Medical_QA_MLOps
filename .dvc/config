@@ -1,0 +1,4 @@
+[core]
+    remote = gcsremote
+['remote "gcsremote"']
+    url = gs://medqa-demo-11843-medical-qa-dvc/dvc
