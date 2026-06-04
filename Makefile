@@ -28,7 +28,7 @@ test:
 	.venv/bin/pytest --cov=medical_qa_platform --cov-report=term-missing
 
 smoke-pipeline:
-	.venv/bin/dvc repro
+	.venv/bin/dvc repro build_kg_smoke eval_smoke register_smoke_model
 
 smoke-pipeline-local:
 	$(PY) -m mlops.pipelines.build_smoke_kg --profile smoke
