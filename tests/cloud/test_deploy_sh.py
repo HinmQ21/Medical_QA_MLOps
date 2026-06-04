@@ -23,6 +23,8 @@ def test_dry_run_upgrades_four_charts_mock_backend():
     assert "upgrade --install medical-qa-retrieval deploy/helm/retrieval" in o
     assert "serviceAccount.gcpServiceAccount=medical-qa-retrieval@demo.iam.gserviceaccount.com" in o
     assert "dvc.bucket=demo-medical-qa-dvc" in o
+    assert "--set-file dvc.yaml=dvc.yaml" in o  # real pipeline metadata so initContainer dvc pull fetches the KG
+    assert "--set-file dvc.lock=dvc.lock" in o
     assert "upgrade --install medical-qa-api deploy/helm/api" in o
     assert "upgrade --install medical-qa-nginx deploy/helm/nginx" in o
     assert "deploy/helm/nginx/values-prod.yaml" in o

@@ -28,7 +28,9 @@ run "$HELM" upgrade --install medical-qa-retrieval deploy/helm/retrieval \
   --set image.tag="$IMAGE_TAG" \
   --set initImage.tag="$IMAGE_TAG" \
   --set serviceAccount.gcpServiceAccount="$GSA_EMAIL" \
-  --set dvc.bucket="$DVC_BUCKET"
+  --set dvc.bucket="$DVC_BUCKET" \
+  --set-file dvc.yaml=dvc.yaml \
+  --set-file dvc.lock=dvc.lock
 
 run "$HELM" upgrade --install medical-qa-api deploy/helm/api \
   --namespace "$K8S_NAMESPACE" \

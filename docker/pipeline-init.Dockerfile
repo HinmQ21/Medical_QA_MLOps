@@ -10,7 +10,7 @@ RUN addgroup --system app && adduser --system --ingroup app app && \
     chown -R app:app /workspace
 
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir 'dvc>=3.50'
+    pip install --no-cache-dir 'dvc[gs]>=3.50'
 
 USER app
 

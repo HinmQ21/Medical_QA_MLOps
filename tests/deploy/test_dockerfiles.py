@@ -69,7 +69,7 @@ def test_kserve_mock_dockerfile_runs_mock_predictor_on_8080():
 
 def test_pipeline_init_dockerfile_contains_dvc_but_not_runtime_ml_dependencies():
     text = _read("pipeline-init.Dockerfile")
-    assert "dvc>=3.50" in text
+    assert "dvc[gs]>=3.50" in text  # gs extra: keyless GCS pull in the dvc-pull initContainer
     assert ".[runtime]" not in text
     assert ".[pipeline]" not in text
     assert "mlflow" not in text
