@@ -16,6 +16,17 @@ def test_has_strict_mode_and_requires_api_key():
     assert "NGINX_API_KEY:?" in text
 
 
+def test_dry_run_waits_for_rollout_before_probing():
+    # smoke runs seconds after `helm upgrade`; without waiting it hits a stale pod
+    # from the previous revision (old buggy api) and fails. Wait for the rollout first.
+    out = subprocess.run(
+        ["bash", str(SCRIPT), "--dry-run"], capture_output=True, text=True, env=ENV
+    )
+    o = out.stdout
+    assert "rollout status deploy/medical-qa-api" in o
+    assert "rollout status deploy/medical-qa-retrieval" in o
+
+
 def test_dry_run_resolves_lb_ip_and_hits_health_version_and_predict():
     out = subprocess.run(
         ["bash", str(SCRIPT), "--dry-run"], capture_output=True, text=True, env=ENV

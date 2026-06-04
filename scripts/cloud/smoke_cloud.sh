@@ -22,6 +22,13 @@ run() {
   if [ "$DRY_RUN" -eq 1 ]; then echo "+ $*"; else "$@"; fi
 }
 
+# Smoke runs seconds after `helm upgrade`, while the rolling update is still in
+# flight — probing now can hit a stale pod from the previous revision and fail.
+# Wait for each deployment to finish rolling out before probing.
+for dep in medical-qa-retrieval medical-qa-api medical-qa-nginx; do
+  run "$KUBECTL" rollout status "deploy/$dep" --namespace "$K8S_NAMESPACE" --timeout=300s
+done
+
 LB_QUERY='{.status.loadBalancer.ingress[0].ip}'
 if [ "$DRY_RUN" -eq 1 ]; then
   echo "+ kubectl get service medical-qa-nginx --namespace $K8S_NAMESPACE -o jsonpath=$LB_QUERY"
