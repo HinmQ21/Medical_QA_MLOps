@@ -12,7 +12,7 @@ def test_build_kg_passes_embed_model_and_kg_out():
     spec = full_stages.build_kg(cfg, p)
     flat = _flat(spec)
     assert "scripts.build_kg.run_pipeline" in flat
-    assert "--embed-model" in flat and "abhinand/MedEmbed-large-v0.1" in flat
+    assert "--embed-model" in flat and "abhinand/MedEmbed-small-v0.1" in flat
     assert "--data-dir" in flat and str(p["kg_dir"]) in flat
     assert spec.cwd == str(cfg.baseline_root)
     assert str(cfg.train_venv) == spec.commands[0][0]
