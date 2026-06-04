@@ -23,7 +23,7 @@ full:
   kg_version: v0
   report_to: none
   build_kg:
-    embed_model: abhinand/MedEmbed-large-v0.1
+    embed_model: abhinand/MedEmbed-small-v0.1
     embed_device: cpu
   stage1:
     base_model: models/Qwen2.5-3B-Instruct
@@ -60,7 +60,7 @@ smoke_full:
   kg_version: v0
   report_to: none
   build_kg:
-    embed_model: abhinand/MedEmbed-large-v0.1
+    embed_model: abhinand/MedEmbed-small-v0.1
     embed_device: cpu
   stage1:
     base_model: models/Qwen2.5-3B-Instruct

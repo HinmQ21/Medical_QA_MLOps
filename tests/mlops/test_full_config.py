@@ -8,7 +8,7 @@ def test_load_full_profile_defaults():
     assert cfg.model_family == "qwen"
     assert cfg.stage2["variant"] == "grpo"
     assert cfg.report_to == "none"
-    assert cfg.build_kg["embed_model"] == "abhinand/MedEmbed-large-v0.1"
+    assert cfg.build_kg["embed_model"] == "abhinand/MedEmbed-small-v0.1"
     assert cfg.eval["vllm_gpu_mem"] == 0.6
     assert cfg.caps == {}
 
