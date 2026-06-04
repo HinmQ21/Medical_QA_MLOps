@@ -12,10 +12,17 @@ WORKDIR /app
 RUN addgroup --system app && adduser --system --ingroup app app
 
 COPY pyproject.toml README.md ./
+
+# uv = fast installs; CPU-only torch (retrieval runs CPU) avoids the ~2.5GB CUDA
+# torch that sentence-transformers would otherwise pull. This layer precedes
+# COPY src, so source-only changes reuse it from the build cache.
+RUN pip install --no-cache-dir uv && \
+    uv pip install --system --no-cache torch --index-url https://download.pytorch.org/whl/cpu
+
 COPY src ./src
 
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir '.[runtime]'
+# torch already satisfied (CPU); '.[runtime]' adds faiss-cpu + sentence-transformers + numpy + the package
+RUN uv pip install --system --no-cache '.[runtime]'
 
 USER app
 EXPOSE 8001

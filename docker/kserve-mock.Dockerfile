@@ -10,8 +10,8 @@ RUN addgroup --system app && adduser --system --ingroup app app
 COPY pyproject.toml README.md ./
 COPY src ./src
 
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir .
+RUN pip install --no-cache-dir uv && \
+    uv pip install --system --no-cache .
 
 USER app
 EXPOSE 8080

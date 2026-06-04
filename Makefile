@@ -11,13 +11,13 @@ KUBECTL := $(DEPLOY_TOOLS_DIR)/bin/kubectl
 
 .venv:
 	python3.12 -m venv .venv
-	$(PIP) install -U pip
+	$(PIP) install -U pip uv
 
 install: .venv
-	$(PIP) install -e ".[dev]"
+	.venv/bin/uv pip install --python .venv/bin/python -e ".[dev]"
 
 install-pipeline: .venv
-	$(PIP) install -e ".[dev,pipeline]"
+	.venv/bin/uv pip install --python .venv/bin/python -e ".[dev,pipeline]"
 
 install-deploy-tools: $(HELM) $(KUBECTL)
 

@@ -31,6 +31,9 @@ def test_ci_workflow_runs_tests_helm_checks_and_builds_images():
     assert "docker/retrieval.Dockerfile" in commands
     assert "docker/kserve-mock.Dockerfile" in commands
     assert "docker/pipeline-init.Dockerfile" in commands
+    # GHA layer cache + build each image exactly once (no separate load-then-push rebuild)
+    assert "type=gha" in commands
+    assert commands.count("docker buildx build") == 4
 
 
 def test_deploy_workflow_auto_runs_after_ci_and_guards_cluster():

@@ -38,18 +38,6 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
-      - name: Build API image
-        run: docker buildx build --platform linux/amd64 -f docker/api.Dockerfile -t $REGISTRY/medical-qa-api:${{ github.sha }} --load .
-
-      - name: Build retrieval image
-        run: docker buildx build --platform linux/amd64 -f docker/retrieval.Dockerfile -t $REGISTRY/medical-qa-retrieval:${{ github.sha }} --load .
-
-      - name: Build KServe mock image
-        run: docker buildx build --platform linux/amd64 -f docker/kserve-mock.Dockerfile -t $REGISTRY/medical-qa-kserve-mock:${{ github.sha }} --load .
-
-      - name: Build DVC init image
-        run: docker buildx build --platform linux/amd64 -f docker/pipeline-init.Dockerfile -t $REGISTRY/medical-qa-pipeline-init:${{ github.sha }} --load .
-
       - name: Login to GHCR
         if: github.ref == 'refs/heads/main'
         uses: docker/login-action@v3
@@ -58,10 +46,41 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Push images
-        if: github.ref == 'refs/heads/main'
+      # On main: build once and push (:sha + :latest). On PRs: build once and load
+      # (validate only). GHA layer cache means unchanged dependency layers (CPU
+      # torch, faiss, etc.) are reused across runs instead of rebuilt every time.
+      - name: Select push vs load
         run: |
-          docker buildx build --platform linux/amd64 -f docker/api.Dockerfile -t $REGISTRY/medical-qa-api:${{ github.sha }} -t $REGISTRY/medical-qa-api:latest --push .
-          docker buildx build --platform linux/amd64 -f docker/retrieval.Dockerfile -t $REGISTRY/medical-qa-retrieval:${{ github.sha }} -t $REGISTRY/medical-qa-retrieval:latest --push .
-          docker buildx build --platform linux/amd64 -f docker/kserve-mock.Dockerfile -t $REGISTRY/medical-qa-kserve-mock:${{ github.sha }} -t $REGISTRY/medical-qa-kserve-mock:latest --push .
-          docker buildx build --platform linux/amd64 -f docker/pipeline-init.Dockerfile -t $REGISTRY/medical-qa-pipeline-init:${{ github.sha }} -t $REGISTRY/medical-qa-pipeline-init:latest --push .
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "PUSH=true" >> "$GITHUB_ENV"
+          else
+            echo "PUSH=false" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build API image
+        run: |
+          docker buildx build --platform linux/amd64 -f docker/api.Dockerfile \
+            --cache-from type=gha,scope=api --cache-to type=gha,mode=max,scope=api \
+            -t $REGISTRY/medical-qa-api:${{ github.sha }} \
+            $([ "$PUSH" = true ] && echo "-t $REGISTRY/medical-qa-api:latest --push" || echo "--load") .
+
+      - name: Build retrieval image
+        run: |
+          docker buildx build --platform linux/amd64 -f docker/retrieval.Dockerfile \
+            --cache-from type=gha,scope=retrieval --cache-to type=gha,mode=max,scope=retrieval \
+            -t $REGISTRY/medical-qa-retrieval:${{ github.sha }} \
+            $([ "$PUSH" = true ] && echo "-t $REGISTRY/medical-qa-retrieval:latest --push" || echo "--load") .
+
+      - name: Build KServe mock image
+        run: |
+          docker buildx build --platform linux/amd64 -f docker/kserve-mock.Dockerfile \
+            --cache-from type=gha,scope=kserve-mock --cache-to type=gha,mode=max,scope=kserve-mock \
+            -t $REGISTRY/medical-qa-kserve-mock:${{ github.sha }} \
+            $([ "$PUSH" = true ] && echo "-t $REGISTRY/medical-qa-kserve-mock:latest --push" || echo "--load") .
+
+      - name: Build DVC init image
+        run: |
+          docker buildx build --platform linux/amd64 -f docker/pipeline-init.Dockerfile \
+            --cache-from type=gha,scope=pipeline-init --cache-to type=gha,mode=max,scope=pipeline-init \
+            -t $REGISTRY/medical-qa-pipeline-init:${{ github.sha }} \
+            $([ "$PUSH" = true ] && echo "-t $REGISTRY/medical-qa-pipeline-init:latest --push" || echo "--load") .

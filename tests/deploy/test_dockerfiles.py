@@ -32,7 +32,7 @@ def test_dockerignore_excludes_local_and_generated_build_context():
 def test_api_dockerfile_is_lean_non_root_and_binds_all_interfaces():
     text = _read("api.Dockerfile")
     assert "FROM python:3.12-slim" in text
-    assert "pip install --no-cache-dir ." in text
+    assert "uv pip install --system --no-cache ." in text
     assert ".[runtime]" not in text
     assert ".[pipeline]" not in text
     assert "USER app" in text
@@ -44,7 +44,9 @@ def test_api_dockerfile_is_lean_non_root_and_binds_all_interfaces():
 
 def test_retrieval_dockerfile_installs_runtime_only_and_does_not_bake_artifacts():
     text = _read("retrieval.Dockerfile")
-    assert "pip install --no-cache-dir '.[runtime]'" in text
+    assert "uv pip install --system --no-cache '.[runtime]'" in text
+    assert "download.pytorch.org/whl/cpu" in text  # CPU-only torch, not the ~2.5GB CUDA build
+    assert "uv pip install" in text
     assert "USER app" in text
     assert "EXPOSE 8001" in text
     assert "RETRIEVAL_DEVICE=cpu" in text
@@ -59,7 +61,7 @@ def test_retrieval_dockerfile_installs_runtime_only_and_does_not_bake_artifacts(
 
 def test_kserve_mock_dockerfile_runs_mock_predictor_on_8080():
     text = _read("kserve-mock.Dockerfile")
-    assert "pip install --no-cache-dir ." in text
+    assert "uv pip install --system --no-cache ." in text
     assert "USER app" in text
     assert "EXPOSE 8080" in text
     assert "medical_qa_platform.serving.kserve_mock_app:create_app" in text
