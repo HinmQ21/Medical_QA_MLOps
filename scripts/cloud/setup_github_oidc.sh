@@ -47,6 +47,18 @@ run gcloud iam service-accounts create "$DEPLOY_GSA_NAME" \
   --project "$GCP_PROJECT" \
   --display-name "Medical QA GitHub deployer" || true
 
+# IAM is eventually consistent: a freshly-created SA may not yet be visible to the
+# policy-binding API, which then fails with "Service account ... does not exist".
+# Wait for it to propagate before granting roles.
+if [ "$DRY_RUN" -eq 0 ]; then
+  for _ in $(seq 1 10); do
+    gcloud iam service-accounts describe "$DEPLOY_GSA_EMAIL" \
+      --project "$GCP_PROJECT" >/dev/null 2>&1 && break
+    echo "waiting for $DEPLOY_GSA_EMAIL to propagate..."
+    sleep 3
+  done
+fi
+
 for role in roles/container.admin roles/serviceusage.serviceUsageAdmin; do
   run gcloud projects add-iam-policy-binding "$GCP_PROJECT" \
     --member "serviceAccount:$DEPLOY_GSA_EMAIL" \

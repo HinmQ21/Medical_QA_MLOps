@@ -32,6 +32,16 @@ def test_dry_run_creates_pool_provider_gsa_and_repo_scoped_binding():
     assert "attribute.repository/octo/medical" in o             # principalSet binding
 
 
+def test_waits_for_deploy_sa_to_propagate_before_binding():
+    # IAM is eventually consistent; the script must poll for the new SA before the
+    # role bindings, or they intermittently fail with "Service account ... does not exist".
+    text = SCRIPT.read_text()
+    assert "service-accounts describe" in text
+    sa_check = text.index("service-accounts describe")
+    first_binding = text.index("add-iam-policy-binding")
+    assert sa_check < first_binding  # the wait comes before any binding
+
+
 def test_dry_run_prints_github_vars_to_set():
     out = subprocess.run(
         ["bash", str(SCRIPT), "--dry-run"], capture_output=True, text=True, env=ENV
