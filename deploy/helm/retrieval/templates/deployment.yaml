@@ -15,6 +15,8 @@ spec:
         app.kubernetes.io/name: medical-qa-retrieval
     spec:
       serviceAccountName: {{ .Values.serviceAccount.name }}
+      securityContext:
+        fsGroup: {{ .Values.podSecurityContext.fsGroup }}
       initContainers:
         - name: dvc-pull
           image: "{{ .Values.initImage.repository }}:{{ .Values.initImage.tag }}"

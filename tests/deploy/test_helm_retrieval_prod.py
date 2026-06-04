@@ -15,7 +15,10 @@ def test_retrieval_renders_workload_identity_sa_and_real_bucket():
         == "medical-qa-retrieval@demo.iam.gserviceaccount.com"
     )
     deployment = find_kind(resources, "Deployment", "medical-qa-retrieval")
-    assert deployment["spec"]["template"]["spec"]["serviceAccountName"] == "medical-qa-retrieval"
+    pod_spec = deployment["spec"]["template"]["spec"]
+    assert pod_spec["serviceAccountName"] == "medical-qa-retrieval"
+    # fsGroup so the non-root container can write the dvc-pulled KG to the PVC
+    assert pod_spec["securityContext"]["fsGroup"] == 1000
     config = find_kind(resources, "ConfigMap", "medical-qa-retrieval-dvc")
     assert "gs://demo-medical-qa-dvc/dvc" in config["data"]["dvc-config"]
     # dvc must run without git in the initContainer (/workspace has no .git)

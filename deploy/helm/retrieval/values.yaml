@@ -18,6 +18,11 @@ serviceAccount:
   name: medical-qa-retrieval
   gcpServiceAccount: ""
 
+# fsGroup makes the artifacts PVC group-writable so the non-root container can
+# write the dvc-pulled KG + HF cache (otherwise dvc pull hits Permission denied).
+podSecurityContext:
+  fsGroup: 1000
+
 persistence:
   storageClassName: ""
   size: 5Gi
