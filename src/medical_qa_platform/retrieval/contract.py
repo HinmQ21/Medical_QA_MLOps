@@ -4,7 +4,7 @@ format_evidence reproduces the exact string the reference search_medical_knowled
 tool returns, so the tokens the model sees at serving time match training.
 """
 
-RETRIEVAL_CONTRACT_VERSION = "v1-medembed-large"
+RETRIEVAL_CONTRACT_VERSION = "v1-medembed-small"
 
 NO_RESULTS = "No relevant knowledge found."
 

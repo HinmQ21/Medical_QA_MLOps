@@ -9,5 +9,5 @@ def test_format_evidence_joins_with_dash_prefix():
     assert contract.format_evidence(["a fact", "b fact"]) == "- a fact\n- b fact"
 
 
-def test_contract_version_is_v1_medembed_large():
-    assert contract.RETRIEVAL_CONTRACT_VERSION == "v1-medembed-large"
+def test_contract_version_is_v1_medembed_small():
+    assert contract.RETRIEVAL_CONTRACT_VERSION == "v1-medembed-small"

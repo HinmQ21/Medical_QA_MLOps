@@ -20,7 +20,7 @@ class KGRetrieval(RetrievalBackend):  # pragma: no cover
         self.data_dir = Path(data_dir or os.environ.get("KG_DATA_DIR", "data/"))
         self.device = resolve_device(device)
         self.encoder_model = encoder_model or os.environ.get(
-            "KG_ENCODER_MODEL", "abhinand/MedEmbed-large-v0.1"
+            "KG_ENCODER_MODEL", "abhinand/MedEmbed-small-v0.1"
         )
 
         faiss, np, sentence_transformer = self._load_runtime_dependencies()
