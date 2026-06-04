@@ -6,6 +6,7 @@ data:
   dvc-config: |-
     [core]
         remote = gcsremote
+        no_scm = true
     ['remote "gcsremote"']
         url = gs://{{ .Values.dvc.bucket }}/dvc
   dvc-yaml: |-

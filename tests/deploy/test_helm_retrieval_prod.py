@@ -18,6 +18,8 @@ def test_retrieval_renders_workload_identity_sa_and_real_bucket():
     assert deployment["spec"]["template"]["spec"]["serviceAccountName"] == "medical-qa-retrieval"
     config = find_kind(resources, "ConfigMap", "medical-qa-retrieval-dvc")
     assert "gs://demo-medical-qa-dvc/dvc" in config["data"]["dvc-config"]
+    # dvc must run without git in the initContainer (/workspace has no .git)
+    assert "no_scm = true" in config["data"]["dvc-config"]
 
 
 def test_retrieval_base_render_still_has_sa_without_annotation():
