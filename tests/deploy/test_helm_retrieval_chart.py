@@ -37,7 +37,7 @@ def test_retrieval_chart_renders_dvc_init_container_pvc_and_hpa():
     env = {item["name"]: item["value"] for item in container["env"]}
     assert env["RETRIEVAL_DEVICE"] == "cpu"
     assert env["KG_ENCODER_MODEL"] == "abhinand/MedEmbed-small-v0.1"
-    assert env["KG_DATA_DIR"] == "/mnt/artifacts/smoke/kg"
+    assert env["KG_DATA_DIR"] == "/mnt/artifacts/demo/kg"
     assert env["HF_HOME"] == "/mnt/artifacts/hf"
     assert env["SENTENCE_TRANSFORMERS_HOME"] == "/mnt/artifacts/hf/sentence-transformers"
     assert service["spec"]["ports"][0]["port"] == 8001

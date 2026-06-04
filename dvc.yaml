@@ -34,6 +34,18 @@ stages:
     outs:
       - artifacts/smoke/mlflow_register_dry_run.json
 
+  build_demo_kg:
+    cmd: .venv/bin/python -m mlops.pipelines.build_demo_kg --out-dir artifacts/demo/kg
+    deps:
+      - mlops/pipelines/build_demo_kg.py
+    outs:
+      - artifacts/demo/kg/index_hyperedge.bin
+      - artifacts/demo/kg/index_entity.bin
+      - artifacts/demo/kg/hedge_ids.npy
+      - artifacts/demo/kg/entity_names.npy
+      - artifacts/demo/kg/medical_hg.json
+      - artifacts/demo/kg/manifest.json
+
   full_build_kg:
     cmd: .venv/bin/python -m mlops.pipelines.run_full --profile full --stages build_kg
     deps:
