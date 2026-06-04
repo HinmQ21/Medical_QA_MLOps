@@ -37,3 +37,15 @@ def test_deploy_auto_uses_oidc_and_is_gated_on_ci_success():
     assert "workflow_run.conclusion == 'success'" in text
     assert "steps.cluster.outputs.up == 'true'" in text
     assert "google-github-actions/get-gke-credentials@v2" in text
+
+
+def test_demo_down_is_dispatch_tears_down_and_optionally_deletes_bucket():
+    text = (WF / "demo-down.yml").read_text()
+    wf = _load("demo-down.yml")
+    assert "workflow_dispatch" in _triggers(wf)
+    assert "id-token: write" in text
+    assert "google-github-actions/auth@v2" in text
+    assert "scripts/cloud/teardown.sh" in text
+    assert "delete_bucket" in text
+    assert "inputs.delete_bucket == 'true'" in text
+    assert "storage rm -r" in text

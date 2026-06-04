@@ -1,0 +1,48 @@
+name: Demo Down (GKE)
+
+on:
+  workflow_dispatch:
+    inputs:
+      delete_bucket:
+        description: Also delete the GCS DVC bucket (durable KG storage)
+        required: true
+        default: "false"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  demo-down:
+    runs-on: ubuntu-latest
+    environment: gke-demo
+    env:
+      GCP_PROJECT: ${{ vars.GCP_PROJECT }}
+      K8S_NAMESPACE: medical-qa
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deploy tools
+        run: make install-deploy-tools
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Get cluster credentials
+        run: gcloud container clusters get-credentials medical-qa --region asia-southeast1
+
+      - name: Release LoadBalancer and delete cluster
+        run: bash scripts/cloud/teardown.sh
+
+      - name: Optionally delete the DVC bucket
+        if: ${{ inputs.delete_bucket == 'true' }}
+        run: gcloud storage rm -r "gs://${GCP_PROJECT}-medical-qa-dvc"
