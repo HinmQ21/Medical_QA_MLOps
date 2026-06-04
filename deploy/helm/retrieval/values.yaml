@@ -38,6 +38,9 @@ env:
 
 dvc:
   bucket: medical-qa-dvc-REPLACE-ME
+  # The init container pulls only this stage's outputs (the FAISS demo-KG), not the
+  # whole DVC graph — so retrieval startup never depends on unrelated smoke artifacts.
+  pullStage: build_demo_kg
   yaml: |
     stages: {}
   lock: |

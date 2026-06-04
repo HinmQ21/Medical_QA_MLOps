@@ -32,6 +32,10 @@ def test_retrieval_chart_renders_dvc_init_container_pvc_and_hpa():
     assert init["name"] == "dvc-pull"
     assert init["image"].endswith("medical-qa-pipeline-init:latest")
     assert "dvc pull --no-run-cache" in init["args"][0]
+    # scope the pull to the demo-KG stage: the serving pod needs the FAISS KG, not the
+    # smoke eval/register artifacts — pulling everything couples startup to unrelated
+    # outputs that may be absent from the remote and fails the whole init.
+    assert "build_demo_kg" in init["args"][0]
     mount_names = {mount["name"] for mount in init["volumeMounts"]}
     assert {"artifacts", "dvc-metadata"} <= mount_names
     env = {item["name"]: item["value"] for item in container["env"]}
