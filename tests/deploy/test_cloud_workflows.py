@@ -28,3 +28,12 @@ def test_demo_up_is_dispatch_and_uses_oidc_and_scripts():
     assert "scripts/cloud/create_secrets.sh" in text
     assert "scripts/cloud/deploy.sh" in text
     assert "scripts/cloud/smoke_cloud.sh" in text
+
+
+def test_deploy_auto_uses_oidc_and_is_gated_on_ci_success():
+    text = (WF / "deploy.yml").read_text()
+    assert "id-token: write" in text
+    assert "google-github-actions/auth@v2" in text
+    assert "workflow_run.conclusion == 'success'" in text
+    assert "steps.cluster.outputs.up == 'true'" in text
+    assert "google-github-actions/get-gke-credentials@v2" in text

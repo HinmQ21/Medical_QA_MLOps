@@ -1,43 +1,67 @@
-name: Manual Deploy
+name: Auto Deploy
 
+# Runs after CI finishes on main. Deploys the freshly-built images ONLY when the
+# demo cluster is currently up; otherwise it skips and stays green (no red runs
+# from pushes made while the demo is torn down). Bring the cluster up with the
+# "Demo Up (GKE)" workflow; tear it down with "Demo Down (GKE)".
 on:
-  workflow_dispatch:
-    inputs:
-      image_tag:
-        description: Image tag to deploy
-        required: true
-        default: latest
-      namespace:
-        description: Kubernetes namespace
-        required: true
-        default: medical-qa
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write
 
 jobs:
   deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-    environment: plan4-cluster
+    environment: gke-demo
+    env:
+      GCP_PROJECT: ${{ vars.GCP_PROJECT }}
+      IMAGE_TAG: latest
+      K8S_NAMESPACE: medical-qa
+      NGINX_API_KEY: ${{ secrets.NGINX_API_KEY }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Python dependencies
-        run: make install-pipeline
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
       - name: Install deploy tools
         run: make install-deploy-tools
 
-      - name: Authenticate to cluster in Plan 4
-        run: |
-          echo "Plan 4 supplies cloud auth and kubeconfig before helm upgrade."
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
 
-      - name: Helm upgrade app-serving charts
-        run: |
-          helm upgrade --install medical-qa-api deploy/helm/api --namespace "${{ inputs.namespace }}" --create-namespace --set image.tag="${{ inputs.image_tag }}"
-          helm upgrade --install medical-qa-retrieval deploy/helm/retrieval --namespace "${{ inputs.namespace }}" --set image.tag="${{ inputs.image_tag }}" --set initImage.tag="${{ inputs.image_tag }}"
-          helm upgrade --install medical-qa-nginx deploy/helm/nginx --namespace "${{ inputs.namespace }}"
-          helm upgrade --install medical-qa-kserve deploy/helm/kserve --namespace "${{ inputs.namespace }}" --set image.tag="${{ inputs.image_tag }}"
+      - uses: google-github-actions/setup-gcloud@v2
 
-      - name: Smoke tests
+      - name: Detect whether the demo cluster is up
+        id: cluster
         run: |
-          curl -fsS "$BASE_URL/health"
-          curl -fsS -H "x-api-key: $API_KEY" "$BASE_URL/health"
-          curl -fsS -X POST -H "x-api-key: $API_KEY" -H "content-type: application/json" "$BASE_URL/predict" -d '{"question":"Which drug is first-line for type 2 diabetes?","options":{"A":"Metformin","B":"Amoxicillin"}}'
+          if gcloud container clusters describe medical-qa --region asia-southeast1 >/dev/null 2>&1; then
+            echo "up=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Cluster 'medical-qa' not found — demo is down. Skipping deploy."
+            echo "up=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.cluster.outputs.up == 'true'
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: medical-qa
+          location: asia-southeast1
+
+      - name: Rolling deploy
+        if: steps.cluster.outputs.up == 'true'
+        run: bash scripts/cloud/deploy.sh
+
+      - name: Smoke-test
+        if: steps.cluster.outputs.up == 'true'
+        run: bash scripts/cloud/smoke_cloud.sh

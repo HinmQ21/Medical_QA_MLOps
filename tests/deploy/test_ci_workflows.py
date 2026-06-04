@@ -33,14 +33,14 @@ def test_ci_workflow_runs_tests_helm_checks_and_builds_images():
     assert "docker/pipeline-init.Dockerfile" in commands
 
 
-def test_deploy_workflow_is_manual_dispatch_skeleton():
+def test_deploy_workflow_auto_runs_after_ci_and_guards_cluster():
+    text = (ROOT / ".github/workflows/deploy.yml").read_text()
     workflow = _workflow("deploy.yml")
     triggers = workflow.get("on", workflow.get(True))
-    assert "workflow_dispatch" in triggers
+    assert "workflow_run" in triggers
+    assert triggers["workflow_run"]["workflows"] == ["CI"]
+    assert "main" in triggers["workflow_run"]["branches"]
     commands = _all_run_commands(workflow)
-    assert "helm upgrade --install medical-qa-api deploy/helm/api" in commands
-    assert "helm upgrade --install medical-qa-retrieval deploy/helm/retrieval" in commands
-    assert "helm upgrade --install medical-qa-nginx deploy/helm/nginx" in commands
-    assert "helm upgrade --install medical-qa-kserve deploy/helm/kserve" in commands
-    assert "/health" in commands
-    assert "/predict" in commands
+    assert "gcloud container clusters describe medical-qa" in commands
+    assert "up=false" in commands  # skip-green path when the cluster is down
+    assert "scripts/cloud/deploy.sh" in commands
