@@ -38,6 +38,7 @@ jobs:
       - uses: google-github-actions/setup-gcloud@v2
 
       - name: Get cluster credentials
+        continue-on-error: true
         run: gcloud container clusters get-credentials medical-qa --region asia-southeast1
 
       - name: Release LoadBalancer and delete cluster

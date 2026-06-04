@@ -21,11 +21,13 @@ jobs:
     environment: gke-demo
     env:
       GCP_PROJECT: ${{ vars.GCP_PROJECT }}
-      IMAGE_TAG: latest
+      IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
       K8S_NAMESPACE: medical-qa
       NGINX_API_KEY: ${{ secrets.NGINX_API_KEY }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - uses: actions/setup-python@v5
         with:
