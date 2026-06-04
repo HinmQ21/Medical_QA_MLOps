@@ -10,3 +10,4 @@ data:
   RUNPOD_MODEL: {{ .Values.env.runpodModel | quote }}
   KSERVE_URL: {{ .Values.env.kserveUrl | quote }}
   TOP_K: {{ .Values.env.topK | quote }}
+  DRIFT_LOG_PATH: {{ .Values.env.driftLogPath | quote }}

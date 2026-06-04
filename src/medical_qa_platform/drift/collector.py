@@ -26,6 +26,11 @@ class DriftCollector:
             "latency_ms": response.latency_ms,
         }
         if self.path is not None:
-            with open(self.path, "a") as handle:
-                handle.write(json.dumps(row) + "\n")
+            try:
+                with open(self.path, "a") as handle:
+                    handle.write(json.dumps(row) + "\n")
+            except OSError:
+                # Drift logging is best-effort observability; a write failure
+                # (read-only/unwritable path) must never break the prediction.
+                pass
         return row

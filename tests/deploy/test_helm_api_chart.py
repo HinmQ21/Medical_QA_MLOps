@@ -23,6 +23,9 @@ def test_api_chart_renders_deployment_service_configmap_and_hpa():
 
     assert config["data"]["RETRIEVAL_URL"] == "http://medical-qa-retrieval:8001"
     assert config["data"]["MODEL_BACKEND"] == "mock"
+    # the default drift_log.jsonl resolves under root-owned /app; the non-root container
+    # can't write it, so /predict 500s. Point drift logging at a writable dir.
+    assert config["data"]["DRIFT_LOG_PATH"] == "/tmp/drift_log.jsonl"
     assert service["spec"]["ports"][0]["port"] == 8000
     container = deployment["spec"]["template"]["spec"]["containers"][0]
     assert container["ports"][0]["containerPort"] == 8000
