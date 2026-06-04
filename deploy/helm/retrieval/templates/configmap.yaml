@@ -4,7 +4,10 @@ metadata:
   name: medical-qa-retrieval-dvc
 data:
   dvc-config: |-
-{{ .Values.dvc.config | indent 4 }}
+    [core]
+        remote = gcsremote
+    ['remote "gcsremote"']
+        url = gs://{{ .Values.dvc.bucket }}/dvc
   dvc-yaml: |-
 {{ .Values.dvc.yaml | indent 4 }}
   dvc-lock: |-

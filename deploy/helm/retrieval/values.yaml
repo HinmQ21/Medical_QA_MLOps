@@ -13,6 +13,11 @@ initImage:
 service:
   port: 8001
 
+serviceAccount:
+  create: true
+  name: medical-qa-retrieval
+  gcpServiceAccount: ""
+
 persistence:
   storageClassName: ""
   size: 5Gi
@@ -27,11 +32,7 @@ env:
   sentenceTransformersHome: /mnt/artifacts/hf/sentence-transformers
 
 dvc:
-  config: |
-    [core]
-        remote = gcsremote
-    ['remote "gcsremote"']
-        url = gs://medical-qa-plan4-wiring/dvc
+  bucket: medical-qa-dvc-REPLACE-ME
   yaml: |
     stages: {}
   lock: |

@@ -14,6 +14,7 @@ spec:
       labels:
         app.kubernetes.io/name: medical-qa-retrieval
     spec:
+      serviceAccountName: {{ .Values.serviceAccount.name }}
       initContainers:
         - name: dvc-pull
           image: "{{ .Values.initImage.repository }}:{{ .Values.initImage.tag }}"
