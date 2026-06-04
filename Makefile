@@ -7,7 +7,7 @@ DEPLOY_TOOLS_DIR := .tools
 HELM := $(DEPLOY_TOOLS_DIR)/bin/helm
 KUBECTL := $(DEPLOY_TOOLS_DIR)/bin/kubectl
 
-.PHONY: install install-pipeline install-deploy-tools test smoke-pipeline smoke-pipeline-local mlflow-register-dry-run register-model dvc-status helm-lint helm-template helm-dry-run docker-build full-pipeline full-pipeline-dry-run smoke-full
+.PHONY: install install-pipeline install-deploy-tools test smoke-pipeline smoke-pipeline-local mlflow-register-dry-run register-model dvc-status helm-lint helm-template helm-dry-run docker-build full-pipeline full-pipeline-dry-run smoke-full cloud-provision cloud-gcs-dvc cloud-workload-identity cloud-github-oidc cloud-secrets cloud-deploy cloud-smoke cloud-teardown
 
 .venv:
 	python3.12 -m venv .venv
@@ -75,3 +75,27 @@ full-pipeline:
 
 smoke-full:
 	$(PY) -m mlops.pipelines.run_full --profile smoke_full
+
+cloud-provision:
+	bash scripts/cloud/provision_gke.sh
+
+cloud-gcs-dvc:
+	bash scripts/cloud/setup_gcs_dvc_remote.sh
+
+cloud-workload-identity:
+	bash scripts/cloud/setup_workload_identity.sh
+
+cloud-github-oidc:
+	bash scripts/cloud/setup_github_oidc.sh
+
+cloud-secrets:
+	bash scripts/cloud/create_secrets.sh
+
+cloud-deploy:
+	bash scripts/cloud/deploy.sh
+
+cloud-smoke:
+	bash scripts/cloud/smoke_cloud.sh
+
+cloud-teardown:
+	bash scripts/cloud/teardown.sh
