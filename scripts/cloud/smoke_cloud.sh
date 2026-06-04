@@ -30,6 +30,11 @@ else
   IP="$("$KUBECTL" get service medical-qa-nginx --namespace "$K8S_NAMESPACE" -o "jsonpath=$LB_QUERY")"
 fi
 
+if [ "$DRY_RUN" -eq 0 ] && [ -z "$IP" ]; then
+  echo "ERROR: nginx LoadBalancer has no external IP yet. Is the cluster ready? Wait ~30s and retry." >&2
+  exit 1
+fi
+
 BASE="http://${IP}:8080"
 PAYLOAD='{"question":"Which medication is first-line for type 2 diabetes?","options":{"A":"Metformin","B":"Amoxicillin"}}'
 
