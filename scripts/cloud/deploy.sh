@@ -8,6 +8,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$HERE/config.sh"
 REPO_ROOT="$(cd "$HERE/../.." && pwd)"
 HELM="$REPO_ROOT/.tools/bin/helm"
+KUBECTL="$REPO_ROOT/.tools/bin/kubectl"
 
 DRY_RUN=0
 for arg in "$@"; do
@@ -40,8 +41,19 @@ run "$HELM" upgrade --install medical-qa-nginx deploy/helm/nginx \
   --namespace "$K8S_NAMESPACE" \
   -f deploy/helm/nginx/values-prod.yaml
 
-run "$HELM" upgrade --install medical-qa-kserve deploy/helm/kserve \
+# KServe is optional. The mock-backend demo needs no InferenceService, and a vanilla
+# Autopilot cluster ships without KServe CRDs — a hard install there aborts with
+# "no matches for kind InferenceService" and fails the whole deploy. Install the chart
+# only when the CRD is present; otherwise skip (non-fatal).
+KSERVE_INSTALL=("$HELM" upgrade --install medical-qa-kserve deploy/helm/kserve \
   --namespace "$K8S_NAMESPACE" \
-  --set image.tag="$IMAGE_TAG"
+  --set image.tag="$IMAGE_TAG")
+if [ "$DRY_RUN" -eq 1 ]; then
+  echo "+ ${KSERVE_INSTALL[*]}"
+elif "$KUBECTL" get crd inferenceservices.serving.kserve.io >/dev/null 2>&1; then
+  "${KSERVE_INSTALL[@]}"
+else
+  echo "KServe CRD (inferenceservices.serving.kserve.io) not found; skipping kserve chart (mock-backend demo does not need it)."
+fi
 
 echo "Deployed all charts (api=mock) to namespace $K8S_NAMESPACE."

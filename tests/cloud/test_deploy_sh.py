@@ -32,6 +32,15 @@ def test_dry_run_upgrades_four_charts_mock_backend():
     assert "--create-namespace" in o
 
 
+def test_kserve_install_is_guarded_on_crd_presence():
+    # The mock-backend demo runs on a vanilla Autopilot cluster with no KServe CRDs;
+    # a hard `helm install` of the kserve chart there aborts with "no matches for kind
+    # InferenceService" and fails the whole deploy. The live install must be guarded on
+    # the CRD being present and skip (non-fatal) otherwise.
+    text = SCRIPT.read_text()
+    assert "get crd inferenceservices.serving.kserve.io" in text
+
+
 def test_dry_run_does_not_use_runpod_or_api_prod_overlay():
     out = subprocess.run(
         ["bash", str(SCRIPT), "--dry-run"], capture_output=True, text=True, env=ENV
