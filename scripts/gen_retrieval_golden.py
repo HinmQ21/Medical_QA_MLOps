@@ -19,6 +19,7 @@ replayed in CI without faiss/encoder.
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 
@@ -52,10 +53,12 @@ def main():
     parser.add_argument("--baseline-root", required=True)
     parser.add_argument("--data-dir", required=True)
     parser.add_argument("--device", default="cpu")
+    parser.add_argument("--embed-model", default="abhinand/MedEmbed-large-v0.1")
     parser.add_argument("--out", required=True)
     parser.add_argument("--top-k", type=int, default=TOP_K)
     args = parser.parse_args()
 
+    os.environ["KG_ENCODER_MODEL"] = args.embed_model
     sys.path.insert(0, args.baseline_root)
     from scripts.serve.retrieval_tool import MedicalKnowledgeTool
 
@@ -130,7 +133,7 @@ def main():
 
     fixture = {
         "manifest": {
-            "encoder_model": "abhinand/MedEmbed-large-v0.1",
+            "encoder_model": args.embed_model,
             "device": args.device,
             "data_dir": args.data_dir,
             "top_k": args.top_k,
