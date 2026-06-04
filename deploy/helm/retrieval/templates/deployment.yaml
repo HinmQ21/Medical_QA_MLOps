@@ -48,6 +48,8 @@ spec:
               value: {{ .Values.env.retrievalBackend | quote }}
             - name: RETRIEVAL_DEVICE
               value: {{ .Values.env.retrievalDevice | quote }}
+            - name: KG_ENCODER_MODEL
+              value: {{ .Values.env.kgEncoderModel | quote }}
             - name: KG_DATA_DIR
               value: {{ .Values.env.kgDataDir | quote }}
             - name: HF_HOME

@@ -13,6 +13,7 @@ def test_retrieval_values_use_runtime_and_dvc_init_images():
     assert values["image"]["repository"].endswith("medical-qa-retrieval")
     assert values["initImage"]["repository"].endswith("medical-qa-pipeline-init")
     assert values["env"]["retrievalDevice"] == "cpu"
+    assert values["env"]["kgEncoderModel"] == "abhinand/MedEmbed-small-v0.1"
 
 
 def test_retrieval_chart_renders_dvc_init_container_pvc_and_hpa():
@@ -35,6 +36,7 @@ def test_retrieval_chart_renders_dvc_init_container_pvc_and_hpa():
     assert {"artifacts", "dvc-metadata"} <= mount_names
     env = {item["name"]: item["value"] for item in container["env"]}
     assert env["RETRIEVAL_DEVICE"] == "cpu"
+    assert env["KG_ENCODER_MODEL"] == "abhinand/MedEmbed-small-v0.1"
     assert env["KG_DATA_DIR"] == "/mnt/artifacts/smoke/kg"
     assert env["HF_HOME"] == "/mnt/artifacts/hf"
     assert env["SENTENCE_TRANSFORMERS_HOME"] == "/mnt/artifacts/hf/sentence-transformers"

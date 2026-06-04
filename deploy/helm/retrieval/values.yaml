@@ -21,6 +21,7 @@ persistence:
 env:
   retrievalBackend: kg
   retrievalDevice: cpu
+  kgEncoderModel: abhinand/MedEmbed-small-v0.1
   kgDataDir: /mnt/artifacts/smoke/kg
   hfHome: /mnt/artifacts/hf
   sentenceTransformersHome: /mnt/artifacts/hf/sentence-transformers
