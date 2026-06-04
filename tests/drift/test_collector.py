@@ -14,6 +14,7 @@ def _resp(answer, evidence):
         evidence=evidence,
         backend="mock",
         model_version="dev",
+        contract_version="v1-medembed-small",
         latency_ms=10.0,
         trace_id="t1",
     )

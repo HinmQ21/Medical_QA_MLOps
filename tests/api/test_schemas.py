@@ -41,7 +41,9 @@ def test_response_round_trip():
         evidence=["e1"],
         backend="mock",
         model_version="dev",
+        contract_version="v1-medembed-small",
         latency_ms=12.5,
         trace_id="abc",
     )
     assert resp.model_dump()["answer"] == "A"
+    assert resp.model_dump()["contract_version"] == "v1-medembed-small"
