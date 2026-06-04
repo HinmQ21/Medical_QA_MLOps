@@ -92,3 +92,36 @@ stages:
       hash: md5
       md5: d5e6dc53e961cc2be134ccbf9c04f47a
       size: 496
+  build_demo_kg:
+    cmd: .venv/bin/python -m mlops.pipelines.build_demo_kg --out-dir 
+      artifacts/demo/kg
+    deps:
+    - path: mlops/pipelines/build_demo_kg.py
+      hash: md5
+      md5: 789a0cee1f1d89e3065ed9ebb2e46768
+      size: 7320
+    outs:
+    - path: artifacts/demo/kg/entity_names.npy
+      hash: md5
+      md5: 053beb4f388fd315b2befea03189a6e9
+      size: 794
+    - path: artifacts/demo/kg/hedge_ids.npy
+      hash: md5
+      md5: f109a271723b346cca7b238b8b417878
+      size: 606
+    - path: artifacts/demo/kg/index_entity.bin
+      hash: md5
+      md5: db351a47a9fdae54cbec20ec271f3927
+      size: 46125
+    - path: artifacts/demo/kg/index_hyperedge.bin
+      hash: md5
+      md5: 44da8cfea711e7401fea0a241a881d03
+      size: 23085
+    - path: artifacts/demo/kg/manifest.json
+      hash: md5
+      md5: bbfef10415256d7efd3acfc2e937015c
+      size: 150
+    - path: artifacts/demo/kg/medical_hg.json
+      hash: md5
+      md5: f66bb14a4001842349ab32c8ee47440b
+      size: 8009
