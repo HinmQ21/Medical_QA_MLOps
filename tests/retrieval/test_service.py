@@ -40,3 +40,19 @@ def test_metrics_endpoint():
     resp = _client().get("/metrics")
     assert resp.status_code == 200
     assert "mqa_retrieval" in resp.text
+
+
+def test_retrieval_version_reports_contract_encoder_and_kg_dir(monkeypatch):
+    from medical_qa_platform.retrieval.contract import RETRIEVAL_CONTRACT_VERSION
+
+    monkeypatch.setenv("KG_ENCODER_MODEL", "abhinand/MedEmbed-small-v0.1")
+    monkeypatch.setenv("KG_DATA_DIR", "/mnt/artifacts/kg")
+    body = _client().get("/version").json()
+    assert body["contract_version"] == RETRIEVAL_CONTRACT_VERSION
+    assert body["encoder_model"] == "abhinand/MedEmbed-small-v0.1"
+    assert body["kg_data_dir"] == "/mnt/artifacts/kg"
+
+
+def test_retrieval_version_defaults_to_small_encoder(monkeypatch):
+    monkeypatch.delenv("KG_ENCODER_MODEL", raising=False)
+    assert _client().get("/version").json()["encoder_model"] == "abhinand/MedEmbed-small-v0.1"

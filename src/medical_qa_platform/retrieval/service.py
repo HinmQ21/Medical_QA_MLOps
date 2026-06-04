@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 from ..observability.metrics import observe_retrieval, render_metrics
 from .backends import SupportsSearch
+from .contract import RETRIEVAL_CONTRACT_VERSION
 
 
 class SearchRequest(BaseModel):
@@ -63,5 +64,15 @@ def create_retrieval_service(backend: SupportsSearch | None = None) -> FastAPI:
     def metrics():
         body, content_type = render_metrics()
         return Response(content=body, media_type=content_type)
+
+    @app.get("/version")
+    def version():
+        return {
+            "contract_version": RETRIEVAL_CONTRACT_VERSION,
+            "encoder_model": os.environ.get(
+                "KG_ENCODER_MODEL", "abhinand/MedEmbed-small-v0.1"
+            ),
+            "kg_data_dir": os.environ.get("KG_DATA_DIR", "data/"),
+        }
 
     return app
