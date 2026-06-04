@@ -17,10 +17,18 @@ def require_helm() -> Path:
     return HELM
 
 
-def render_chart(chart_name: str) -> list[dict]:
+def render_chart(
+    chart_name: str,
+    values_files: list[str] | None = None,
+    set_values: dict[str, str] | None = None,
+) -> list[dict]:
     helm = require_helm()
     chart = ROOT / "deploy/helm" / chart_name
     cmd = [str(helm), "template", f"test-{chart_name}", str(chart)]
+    for values_file in values_files or []:
+        cmd += ["-f", str(chart / values_file)]
+    for key, value in (set_values or {}).items():
+        cmd += ["--set", f"{key}={value}"]
     try:
         result = subprocess.run(
             cmd,
