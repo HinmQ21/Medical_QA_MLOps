@@ -42,6 +42,22 @@ def test_waits_for_deploy_sa_to_propagate_before_binding():
     assert sa_check < first_binding  # the wait comes before any binding
 
 
+def test_dry_run_grants_deploy_sa_act_as_default_compute_node_sa():
+    # GKE create-auto provisions nodes that run as the default compute SA; without
+    # iam.serviceAccountUser on it the deploy GSA gets HTTP 400 "does not have
+    # access to service account ...-compute@developer..." and the cluster never builds.
+    out = subprocess.run(
+        ["bash", str(SCRIPT), "--dry-run"], capture_output=True, text=True, env=ENV
+    )
+    o = out.stdout
+    assert "roles/iam.serviceAccountUser" in o
+    assert "compute@developer.gserviceaccount.com" in o
+    # bound to the deploy GSA, not some other principal
+    binding = next(ln for ln in o.splitlines() if "compute@developer.gserviceaccount.com" in ln)
+    assert "roles/iam.serviceAccountUser" in binding
+    assert "medical-qa-deployer@demo.iam.gserviceaccount.com" in binding
+
+
 def test_dry_run_prints_github_vars_to_set():
     out = subprocess.run(
         ["bash", str(SCRIPT), "--dry-run"], capture_output=True, text=True, env=ENV

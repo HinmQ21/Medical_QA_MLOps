@@ -65,6 +65,16 @@ for role in roles/container.admin roles/serviceusage.serviceUsageAdmin; do
     --role "$role"
 done
 
+# GKE Autopilot create-auto provisions nodes that run as the default compute
+# service account; the deploy GSA must be allowed to actAs it, or cluster creation
+# is rejected with HTTP 400 "does not have access to service account
+# ...-compute@developer.gserviceaccount.com". Scope the grant to that one SA.
+run gcloud iam service-accounts add-iam-policy-binding \
+  "${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+  --project "$GCP_PROJECT" \
+  --role roles/iam.serviceAccountUser \
+  --member "serviceAccount:$DEPLOY_GSA_EMAIL"
+
 # 3. Allow the repo's OIDC identities to impersonate the deploy GSA.
 PRINCIPAL="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${WIF_POOL}/attribute.repository/${GITHUB_REPO}"
 run gcloud iam service-accounts add-iam-policy-binding "$DEPLOY_GSA_EMAIL" \
