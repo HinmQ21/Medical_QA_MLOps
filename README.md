@@ -102,8 +102,8 @@ The Docker build target and GitHub Actions workflow therefore pin
 `--platform linux/amd64`.
 
 The Helm charts cover API, retrieval, NGINX API-key gateway, and KServe mock
-`InferenceService`. Live GKE deployment, GCS DVC remote credentials, a self-hosted
-configuration, and observability stacks are deferred to Plan 4.
+`InferenceService`. Live GKE deployment, GCS DVC remote credentials, and
+observability stacks are deferred to Plan 4.
 
 ## Cloud Deploy — GKE-only Demo (slim Plan 4)
 
