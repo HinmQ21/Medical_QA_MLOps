@@ -6,8 +6,9 @@ data:
   MODEL_BACKEND: {{ .Values.env.modelBackend | quote }}
   MODEL_VERSION: {{ .Values.env.modelVersion | quote }}
   RETRIEVAL_URL: {{ .Values.env.retrievalUrl | quote }}
-  RUNPOD_BASE_URL: {{ .Values.env.runpodBaseUrl | quote }}
-  RUNPOD_MODEL: {{ .Values.env.runpodModel | quote }}
+  LLM_BASE_URL: {{ .Values.env.llmBaseUrl | quote }}
+  LLM_MODEL: {{ .Values.env.llmModel | quote }}
   KSERVE_URL: {{ .Values.env.kserveUrl | quote }}
   TOP_K: {{ .Values.env.topK | quote }}
+  MAX_TOKENS: {{ .Values.env.maxTokens | quote }}
   DRIFT_LOG_PATH: {{ .Values.env.driftLogPath | quote }}
