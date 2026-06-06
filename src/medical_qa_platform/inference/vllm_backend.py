@@ -2,8 +2,8 @@
 
 Talks to any server exposing the OpenAI ``/v1/chat/completions`` API. In this
 project that is a self-hosted vLLM server on the DGX-Spark, reached over a
-Cloudflare Tunnel. Replaces the former RunPod backend; the wire protocol is
-identical, so only the env prefix and name changed (RUNPOD_* -> LLM_*).
+Cloudflare Tunnel. Configured via the ``LLM_BASE_URL``, ``LLM_MODEL`` and
+``LLM_API_KEY`` environment variables.
 """
 
 import os
