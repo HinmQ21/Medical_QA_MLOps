@@ -49,3 +49,27 @@ def test_demo_down_is_dispatch_tears_down_and_optionally_deletes_bucket():
     assert "delete_bucket" in text
     assert "inputs.delete_bucket == 'true'" in text
     assert "storage rm -r" in text
+
+
+def test_demo_up_wires_vllm_backend_toggle():
+    text = (WF / "demo-up.yml").read_text()
+    wf = _load("demo-up.yml")
+    inputs = _triggers(wf)["workflow_dispatch"]["inputs"]
+    assert inputs["backend"]["type"] == "choice"
+    assert inputs["backend"]["default"] == "vllm"
+    assert "vllm" in inputs["backend"]["options"]
+    assert "mock" in inputs["backend"]["options"]
+    assert "MODEL_BACKEND: ${{ inputs.backend }}" in text
+    assert "LLM_API_KEY: ${{ secrets.LLM_API_KEY }}" in text
+    assert "LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}" in text
+    assert "LLM_MODEL: ${{ vars.LLM_MODEL }}" in text
+
+
+def test_deploy_auto_wires_vllm_and_ensures_llm_secret():
+    text = (WF / "deploy.yml").read_text()
+    assert "MODEL_BACKEND: ${{ vars.MODEL_BACKEND || 'vllm' }}" in text
+    assert "LLM_API_KEY: ${{ secrets.LLM_API_KEY }}" in text
+    assert "LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}" in text
+    assert "LLM_MODEL: ${{ vars.LLM_MODEL }}" in text
+    # auto-deploy must ensure the LLM secret exists before flipping to vllm
+    assert "scripts/cloud/create_secrets.sh" in text

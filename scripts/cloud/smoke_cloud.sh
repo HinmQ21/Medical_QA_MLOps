@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Smoke-test the live GKE deployment through the nginx LoadBalancer.
-# api serves the mock backend, so /predict returns a deterministic answer letter.
+# Backend-agnostic: asserts /predict returns an "answer" field + the /version
+# contract, so it passes for both the mock and the real vllm backend.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=scripts/cloud/config.sh
