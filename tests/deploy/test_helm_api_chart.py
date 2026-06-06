@@ -36,6 +36,8 @@ def test_api_chart_renders_deployment_service_configmap_and_hpa():
     assert container["ports"][0]["containerPort"] == 8000
     assert container["livenessProbe"]["httpGet"]["path"] == "/health"
     assert container["readinessProbe"]["httpGet"]["path"] == "/ready"
+    # readiness runs a live backend health_check (5s budget); probe timeout must exceed it
+    assert container["readinessProbe"]["timeoutSeconds"] >= 6
     env_by_name = {e["name"]: e for e in container.get("env", [])}
     ref = env_by_name["LLM_API_KEY"]["valueFrom"]["secretKeyRef"]
     assert ref["name"] == "medical-qa-llm-key"

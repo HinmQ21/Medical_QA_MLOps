@@ -1,8 +1,8 @@
 # Cloud Setup Runbook — GKE-only Demo + Automated CI/CD (slim Plan 4)
 
 Deploy the Medical QA stack to a live GKE Autopilot cluster with a cheap,
-ephemeral, automated workflow. The model is served by the **mock** backend (no
-RunPod) — this demonstrates the full request plumbing, real KG retrieval
+ephemeral, automated workflow. The model is served by the **mock** backend —
+this demonstrates the full request plumbing, real KG retrieval
 (MedEmbed-small), autoscaling, and keyless CI/CD, not real 3B-model answers.
 
 All `scripts/cloud/*.sh` accept `--dry-run` to print commands without calling the
@@ -101,6 +101,8 @@ gcloud storage rm -r "gs://${GCP_PROJECT}-medical-qa-dvc"
   `Demo Down (GKE)` (it releases the LB before deleting the cluster).
 - **Mock answers:** `/predict` returns a deterministic letter from the mock
   backend; retrieval is real.
-- **RunPod (real 3B):** a future flip — set the api `modelBackend: runpod` + a
-  RunPod secret; see the full Plan 4 spec.
+- **Real 3B model (vLLM):** flip the api to `modelBackend: vllm` with
+  `LLM_BASE_URL`/`LLM_MODEL` pointing at a self-hosted vLLM server (DGX-Spark via
+  Cloudflare Tunnel) plus the `medical-qa-llm-key` secret; see
+  [`runbooks/dgx-vllm-cloudflare.md`](runbooks/dgx-vllm-cloudflare.md).
 - **Note:** Keep the `Demo Up` `namespace` input at the default `medical-qa`. The retrieval pod's Workload Identity binding (`setup_workload_identity.sh`) is namespace-scoped; deploying into a different namespace requires re-running that bootstrap script for the new namespace, or the keyless `dvc pull` will fail.
