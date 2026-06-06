@@ -102,13 +102,15 @@ The Docker build target and GitHub Actions workflow therefore pin
 `--platform linux/amd64`.
 
 The Helm charts cover API, retrieval, NGINX API-key gateway, and KServe mock
-`InferenceService`. Live GKE deployment, GCS DVC remote credentials, real RunPod
+`InferenceService`. Live GKE deployment, GCS DVC remote credentials, a self-hosted
 configuration, and observability stacks are deferred to Plan 4.
 
 ## Cloud Deploy — GKE-only Demo (slim Plan 4)
 
 Deploy the stack to GKE Autopilot with one-click GitHub workflows and keyless
-CI/CD. The model uses the **mock** backend (no RunPod); retrieval is real. See the
+CI/CD. The CI demo uses the **mock** backend; flip to `MODEL_BACKEND=vllm`
+(self-hosted vLLM on the DGX-Spark via Cloudflare Tunnel) for a real model —
+see `docs/runbooks/dgx-vllm-cloudflare.md`. Retrieval is always real. See the
 full runbook in [`docs/cloud-setup.md`](docs/cloud-setup.md):
 
 - **Demo Up (GKE)** / **Demo Down (GKE)** — manual workflows to bring the demo up
