@@ -33,9 +33,22 @@ run "$HELM" upgrade --install medical-qa-retrieval deploy/helm/retrieval \
   --set-file dvc.yaml=dvc.yaml \
   --set-file dvc.lock=dvc.lock
 
+# api defaults to the mock backend (GKE-only demo). Set MODEL_BACKEND=vllm plus
+# LLM_BASE_URL / LLM_MODEL to point at the self-hosted vLLM server on the DGX-Spark
+# (reached via Cloudflare Tunnel); the LLM_API_KEY secret is created separately.
+API_SET=(--set image.tag="$IMAGE_TAG")
+BACKEND="${MODEL_BACKEND:-mock}"
+if [ "$BACKEND" = "vllm" ]; then
+  : "${LLM_BASE_URL:?set LLM_BASE_URL (e.g. https://llm.example/v1) for the vllm backend}"
+  : "${LLM_MODEL:?set LLM_MODEL (vllm --served-model-name) for the vllm backend}"
+  API_SET+=(--set env.modelBackend=vllm \
+            --set env.llmBaseUrl="$LLM_BASE_URL" \
+            --set env.llmModel="$LLM_MODEL")
+fi
+
 run "$HELM" upgrade --install medical-qa-api deploy/helm/api \
   --namespace "$K8S_NAMESPACE" \
-  --set image.tag="$IMAGE_TAG"
+  "${API_SET[@]}"
 
 run "$HELM" upgrade --install medical-qa-nginx deploy/helm/nginx \
   --namespace "$K8S_NAMESPACE" \
@@ -56,4 +69,4 @@ else
   echo "KServe CRD (inferenceservices.serving.kserve.io) not found; skipping kserve chart (mock-backend demo does not need it)."
 fi
 
-echo "Deployed all charts (api=mock) to namespace $K8S_NAMESPACE."
+echo "Deployed all charts (api=$BACKEND) to namespace $K8S_NAMESPACE."

@@ -48,3 +48,28 @@ def test_dry_run_does_not_use_runpod_or_api_prod_overlay():
     o = out.stdout
     assert "deploy/helm/api/values-prod.yaml" not in o  # slim: api stays mock
     assert "runpod" not in o.lower()
+
+
+def test_dry_run_flips_to_vllm_backend_when_requested():
+    env = {
+        **ENV,
+        "MODEL_BACKEND": "vllm",
+        "LLM_BASE_URL": "https://llm.example/v1",
+        "LLM_MODEL": "medical-qa-llama-gdpo",
+    }
+    out = subprocess.run(
+        ["bash", str(SCRIPT), "--dry-run"], capture_output=True, text=True, env=env
+    )
+    assert out.returncode == 0, out.stderr
+    o = out.stdout
+    assert "env.modelBackend=vllm" in o
+    assert "env.llmBaseUrl=https://llm.example/v1" in o
+    assert "env.llmModel=medical-qa-llama-gdpo" in o
+
+
+def test_vllm_backend_requires_base_url_and_model():
+    env = {**ENV, "MODEL_BACKEND": "vllm"}
+    out = subprocess.run(
+        ["bash", str(SCRIPT), "--dry-run"], capture_output=True, text=True, env=env
+    )
+    assert out.returncode != 0
