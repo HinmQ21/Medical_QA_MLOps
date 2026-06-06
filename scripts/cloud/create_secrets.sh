@@ -43,3 +43,14 @@ apply_secret medical-qa-nginx-api-key \
   "--from-literal=API_KEY=$NGINX_API_KEY"
 
 echo "Secret medical-qa-nginx-api-key applied in namespace $K8S_NAMESPACE."
+
+# Optional LLM backend key (self-hosted vLLM on DGX-Spark via Cloudflare Tunnel).
+# Created only when provided; the mock-backend demo leaves it unset and the api
+# deployment treats the secret as optional.
+if [ -n "${LLM_API_KEY:-}" ]; then
+  apply_secret medical-qa-llm-key \
+    "--from-literal=API_KEY=$LLM_API_KEY"
+  echo "Secret medical-qa-llm-key applied in namespace $K8S_NAMESPACE."
+else
+  echo "LLM_API_KEY not set; skipping LLM secret (mock-backend demo)."
+fi

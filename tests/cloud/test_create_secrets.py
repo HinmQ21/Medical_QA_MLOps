@@ -49,3 +49,22 @@ def test_missing_api_key_fails_fast():
         ["bash", str(SCRIPT), "--dry-run"], capture_output=True, text=True, env=env
     )
     assert out.returncode != 0
+
+
+def test_dry_run_creates_llm_secret_when_key_set():
+    env = {**ENV, "LLM_API_KEY": "dgx-key"}
+    out = subprocess.run(
+        ["bash", str(SCRIPT), "--dry-run"], capture_output=True, text=True, env=env
+    )
+    assert out.returncode == 0, out.stderr
+    o = out.stdout
+    assert "kubectl create secret generic medical-qa-llm-key" in o
+    assert "--from-literal=API_KEY=dgx-key" in o
+
+
+def test_dry_run_skips_llm_secret_when_key_unset():
+    out = subprocess.run(
+        ["bash", str(SCRIPT), "--dry-run"], capture_output=True, text=True, env=ENV
+    )
+    assert out.returncode == 0, out.stderr
+    assert "medical-qa-llm-key" not in out.stdout
