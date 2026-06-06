@@ -58,6 +58,7 @@ def test_health_check_true_on_200_models():
     assert ok is True
     assert captured["url"] == "http://pod/v1/models"
     assert captured["method"] == "GET"
+    assert captured["headers"]["authorization"] == "Bearer k"
 
 
 def test_health_check_false_on_bad_status():
