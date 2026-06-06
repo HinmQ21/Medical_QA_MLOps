@@ -12,10 +12,10 @@ def get_backend(name: str | None = None) -> ModelBackend:
         from .mock_backend import MockBackend
 
         return MockBackend()
-    if name == "runpod":
-        from .runpod_backend import RunpodBackend
+    if name == "vllm":
+        from .vllm_backend import VllmBackend
 
-        return RunpodBackend.from_env()
+        return VllmBackend.from_env()
     if name == "kserve":
         from .kserve_backend import KServeBackend
 
