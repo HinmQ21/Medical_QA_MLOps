@@ -17,3 +17,11 @@ class ModelBackend(ABC):
     ) -> str:
         """Return the raw text completion for the given chat messages."""
         raise NotImplementedError
+
+    def health_check(self) -> bool:
+        """Return True if the backend is reachable and ready to serve.
+
+        Default: assume healthy (mock/in-process backends never go down).
+        Network backends override this with a real probe.
+        """
+        return True
