@@ -63,3 +63,13 @@ def test_demo_up_wires_vllm_backend_toggle():
     assert "LLM_API_KEY: ${{ secrets.LLM_API_KEY }}" in text
     assert "LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}" in text
     assert "LLM_MODEL: ${{ vars.LLM_MODEL }}" in text
+
+
+def test_deploy_auto_wires_vllm_and_ensures_llm_secret():
+    text = (WF / "deploy.yml").read_text()
+    assert "MODEL_BACKEND: ${{ vars.MODEL_BACKEND || 'vllm' }}" in text
+    assert "LLM_API_KEY: ${{ secrets.LLM_API_KEY }}" in text
+    assert "LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}" in text
+    assert "LLM_MODEL: ${{ vars.LLM_MODEL }}" in text
+    # auto-deploy must ensure the LLM secret exists before flipping to vllm
+    assert "scripts/cloud/create_secrets.sh" in text
