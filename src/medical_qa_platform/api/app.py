@@ -21,10 +21,14 @@ def create_app(
     model_version: str | None = None,
     drift_log_path: str | None = None,
     top_k: int | None = None,
+    max_tokens: int | None = None,
 ) -> FastAPI:
     settings = Settings.from_env()
     app = FastAPI(title="Medical QA API")
     app.state.top_k = top_k if top_k is not None else settings.top_k
+    app.state.max_tokens = (
+        max_tokens if max_tokens is not None else settings.max_tokens
+    )
     app.state.model_version = (
         model_version if model_version is not None else settings.model_version
     )
@@ -57,7 +61,8 @@ def create_app(
 
     @app.get("/ready")
     def ready(response: Response):
-        if getattr(app.state, "backend", None) is None:
+        backend = getattr(app.state, "backend", None)
+        if backend is None or not backend.health_check():
             response.status_code = 503
             return {"status": "not ready"}
         return {"status": "ready"}
@@ -68,7 +73,7 @@ def create_app(
         trace_id = uuid.uuid4().hex
         evidence = app.state.retrieval.search(req.question, app.state.top_k)
         messages = build_prompt(req.question, req.options, evidence)
-        raw = app.state.backend.generate(messages)
+        raw = app.state.backend.generate(messages, max_tokens=app.state.max_tokens)
         answer = parse_answer(raw, valid_letters=set(req.options))
         latency_ms = (time.perf_counter() - t0) * 1000.0
         resp = PredictResponse(

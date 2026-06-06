@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from medical_qa_platform.api.app import create_app
+from medical_qa_platform.inference.base import ModelBackend
 from medical_qa_platform.inference.mock_backend import MockBackend
 from medical_qa_platform.retrieval.backends import FixtureRetrieval
 
@@ -97,3 +98,47 @@ def test_version_endpoint_reports_contract_and_model(tmp_path):
     assert body["contract_version"] == RETRIEVAL_CONTRACT_VERSION
     assert body["model_version"] == "test-v1"
     assert body["backend"] == "mock"
+
+
+class _RecordingBackend(ModelBackend):
+    name = "rec"
+
+    def __init__(self):
+        self.max_tokens_calls = []
+
+    def generate(self, messages, max_tokens=512, temperature=0.3):
+        self.max_tokens_calls.append(max_tokens)
+        return "<answer>A</answer>"
+
+
+class _UnhealthyBackend(ModelBackend):
+    name = "down"
+
+    def generate(self, messages, max_tokens=512, temperature=0.3):
+        return "<answer>A</answer>"
+
+    def health_check(self):
+        return False
+
+
+def test_predict_passes_configured_max_tokens(tmp_path):
+    backend = _RecordingBackend()
+    app = create_app(
+        backend=backend,
+        retrieval=FixtureRetrieval({}),
+        max_tokens=2048,
+        drift_log_path=str(tmp_path / "d.jsonl"),
+    )
+    TestClient(app).post(
+        "/predict", json={"question": "Q?", "options": {"A": "a", "B": "b"}}
+    )
+    assert backend.max_tokens_calls == [2048]
+
+
+def test_ready_returns_503_when_backend_unhealthy(tmp_path):
+    app = create_app(
+        backend=_UnhealthyBackend(),
+        retrieval=FixtureRetrieval({}),
+        drift_log_path=str(tmp_path / "d.jsonl"),
+    )
+    assert TestClient(app).get("/ready").status_code == 503
