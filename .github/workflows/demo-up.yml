@@ -11,6 +11,14 @@ on:
         description: Kubernetes namespace
         required: true
         default: medical-qa
+      backend:
+        description: Model backend (vllm = real DGX model, mock = deterministic)
+        required: true
+        type: choice
+        options:
+          - vllm
+          - mock
+        default: vllm
 
 permissions:
   contents: read
@@ -25,6 +33,10 @@ jobs:
       IMAGE_TAG: ${{ inputs.image_tag }}
       K8S_NAMESPACE: ${{ inputs.namespace }}
       NGINX_API_KEY: ${{ secrets.NGINX_API_KEY }}
+      MODEL_BACKEND: ${{ inputs.backend }}
+      LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+      LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
+      LLM_MODEL: ${{ vars.LLM_MODEL }}
     steps:
       - uses: actions/checkout@v4
 
