@@ -12,10 +12,13 @@ env:
   modelBackend: mock
   modelVersion: smoke-dev
   retrievalUrl: http://medical-qa-retrieval:8001
-  runpodBaseUrl: ""
-  runpodModel: ""
+  llmBaseUrl: ""
+  llmModel: ""
   kserveUrl: http://medical-qa-kserve/v1/models/medical-qa-smoke:predict
   topK: "5"
+  # the trained model emits <think>...</think><answer> sequences far longer than
+  # 512 tokens; truncation drops the <answer> tag and yields a null answer.
+  maxTokens: "2048"
   # the container runs non-root with a root-owned /app; write drift telemetry to a
   # writable dir so /predict doesn't 500 on the log append.
   driftLogPath: /tmp/drift_log.jsonl

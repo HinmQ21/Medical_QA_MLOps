@@ -33,3 +33,14 @@ def test_factory_reads_env(monkeypatch):
 def test_factory_unknown_raises():
     with pytest.raises(ValueError):
         get_backend("nope")
+
+
+def test_factory_returns_vllm_by_name():
+    from medical_qa_platform.inference.vllm_backend import VllmBackend
+
+    assert isinstance(get_backend("vllm"), VllmBackend)
+
+
+def test_factory_no_longer_knows_runpod():
+    with pytest.raises(ValueError):
+        get_backend("runpod")

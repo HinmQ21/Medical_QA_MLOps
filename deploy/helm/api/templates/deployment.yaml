@@ -21,6 +21,15 @@ spec:
           envFrom:
             - configMapRef:
                 name: medical-qa-api-config
+          env:
+            # Optional: only the vllm backend needs it. The mock demo leaves the
+            # secret absent; optional=true keeps the pod schedulable without it.
+            - name: LLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: medical-qa-llm-key
+                  key: API_KEY
+                  optional: true
           ports:
             - name: http
               containerPort: 8000
@@ -36,5 +45,10 @@ spec:
               port: http
             initialDelaySeconds: 5
             periodSeconds: 10
+            # /ready performs a live backend health_check() (GET {LLM_BASE_URL}/models)
+            # with a 5s client timeout; the probe timeout must exceed it or a healthy
+            # but slow vllm tunnel gets marked NotReady at the 1s default.
+            timeoutSeconds: 6
+            failureThreshold: 3
           resources:
 {{ toYaml .Values.resources | indent 12 }}
