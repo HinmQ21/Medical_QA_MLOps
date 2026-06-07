@@ -40,6 +40,7 @@ def test_ci_runs_tests_then_builds_all_images_in_parallel():
         "docker/retrieval.Dockerfile",
         "docker/kserve-mock.Dockerfile",
         "docker/pipeline-init.Dockerfile",
+        "docker/ui.Dockerfile",
     }
     build_cmds = "\n".join(s["run"] for s in build["steps"] if "run" in s)
     assert "type=gha" in build_cmds  # layer cache

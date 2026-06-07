@@ -80,3 +80,6 @@ jobs:
         run: |
           IP=$(.tools/bin/kubectl get svc medical-qa-nginx -n "$K8S_NAMESPACE" -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
           echo "Demo is up at http://$IP:8080  (send header x-api-key: <NGINX_API_KEY>)"
+          UI_IP=$(.tools/bin/kubectl get svc medical-qa-ui -n "$K8S_NAMESPACE" \
+            -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
+          echo "Demo UI is up at http://$UI_IP:8501"
