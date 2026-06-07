@@ -26,7 +26,7 @@ run() {
 # Smoke runs seconds after `helm upgrade`, while the rolling update is still in
 # flight — probing now can hit a stale pod from the previous revision and fail.
 # Wait for each deployment to finish rolling out before probing.
-for dep in medical-qa-retrieval medical-qa-api medical-qa-nginx; do
+for dep in medical-qa-retrieval medical-qa-api medical-qa-nginx medical-qa-ui; do
   run "$KUBECTL" rollout status "deploy/$dep" --namespace "$K8S_NAMESPACE" --timeout=300s
 done
 

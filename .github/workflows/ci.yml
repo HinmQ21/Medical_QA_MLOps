@@ -51,6 +51,7 @@ jobs:
           - { image: retrieval, dockerfile: docker/retrieval.Dockerfile }
           - { image: kserve-mock, dockerfile: docker/kserve-mock.Dockerfile }
           - { image: pipeline-init, dockerfile: docker/pipeline-init.Dockerfile }
+          - { image: ui, dockerfile: docker/ui.Dockerfile }
     steps:
       - uses: actions/checkout@v4
 

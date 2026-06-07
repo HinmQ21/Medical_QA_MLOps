@@ -1,0 +1,27 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/hinmq21/medical-qa-ui
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8501
+
+env:
+  # In-cluster ClusterIP of the nginx gateway; the UI calls /predict through it.
+  apiBaseUrl: http://medical-qa-nginx:8080
+
+auth:
+  # The UI reuses the gateway's own API-key Secret (key: API_KEY). The key is
+  # injected into the pod and attached server-side — it never reaches the browser.
+  existingSecret: medical-qa-nginx-api-key
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

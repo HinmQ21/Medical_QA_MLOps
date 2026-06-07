@@ -7,7 +7,7 @@ DEPLOY_TOOLS_DIR := .tools
 HELM := $(DEPLOY_TOOLS_DIR)/bin/helm
 KUBECTL := $(DEPLOY_TOOLS_DIR)/bin/kubectl
 
-.PHONY: install install-pipeline install-deploy-tools test smoke-pipeline smoke-pipeline-local mlflow-register-dry-run register-model dvc-status helm-lint helm-template helm-dry-run docker-build full-pipeline full-pipeline-dry-run smoke-full cloud-provision cloud-gcs-dvc cloud-workload-identity cloud-github-oidc cloud-secrets cloud-deploy cloud-smoke cloud-teardown
+.PHONY: install install-pipeline install-deploy-tools test smoke-pipeline smoke-pipeline-local mlflow-register-dry-run register-model dvc-status helm-lint helm-template helm-dry-run docker-build full-pipeline full-pipeline-dry-run smoke-full cloud-provision cloud-gcs-dvc cloud-workload-identity cloud-github-oidc cloud-secrets cloud-deploy cloud-smoke cloud-teardown demo-ui
 
 .venv:
 	python3.12 -m venv .venv
@@ -49,12 +49,14 @@ helm-lint: $(HELM) $(KUBECTL)
 	$(HELM) lint deploy/helm/retrieval
 	$(HELM) lint deploy/helm/nginx
 	$(HELM) lint deploy/helm/kserve
+	$(HELM) lint deploy/helm/ui
 
 helm-template: $(HELM) $(KUBECTL)
 	$(HELM) template medical-qa-api deploy/helm/api >/dev/null
 	$(HELM) template medical-qa-retrieval deploy/helm/retrieval >/dev/null
 	$(HELM) template medical-qa-nginx deploy/helm/nginx >/dev/null
 	$(HELM) template medical-qa-kserve deploy/helm/kserve >/dev/null
+	$(HELM) template medical-qa-ui deploy/helm/ui >/dev/null
 
 helm-dry-run: $(HELM) $(KUBECTL)
 	$(HELM) template medical-qa-api deploy/helm/api | $(KUBECTL) apply --dry-run=client --validate=false -f -
@@ -66,6 +68,7 @@ docker-build:
 	docker buildx build --platform linux/amd64 -f docker/retrieval.Dockerfile -t medical-qa-retrieval:local --load .
 	docker buildx build --platform linux/amd64 -f docker/kserve-mock.Dockerfile -t medical-qa-kserve-mock:local --load .
 	docker buildx build --platform linux/amd64 -f docker/pipeline-init.Dockerfile -t medical-qa-pipeline-init:local --load .
+	docker buildx build --platform linux/amd64 -f docker/ui.Dockerfile -t medical-qa-ui:local --load .
 
 full-pipeline-dry-run:
 	$(PY) -m mlops.pipelines.run_full --profile full --dry-run
@@ -99,3 +102,7 @@ cloud-smoke:
 
 cloud-teardown:
 	bash scripts/cloud/teardown.sh
+
+demo-ui:
+	.venv/bin/uv pip install --python .venv/bin/python -e '.[demo]'
+	.venv/bin/streamlit run app/streamlit_app.py --server.port 8501 --server.address 0.0.0.0

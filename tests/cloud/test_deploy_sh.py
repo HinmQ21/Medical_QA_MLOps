@@ -30,6 +30,8 @@ def test_dry_run_upgrades_four_charts_mock_backend():
     assert "deploy/helm/nginx/values-prod.yaml" in o
     assert "upgrade --install medical-qa-kserve deploy/helm/kserve" in o
     assert "--create-namespace" in o
+    assert "upgrade --install medical-qa-ui deploy/helm/ui" in o
+    assert "deploy/helm/ui/values-prod.yaml" in o
 
 
 def test_kserve_install_is_guarded_on_crd_presence():
