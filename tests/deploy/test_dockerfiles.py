@@ -79,3 +79,15 @@ def test_pipeline_init_dockerfile_contains_dvc_but_not_runtime_ml_dependencies()
     assert "COPY mlops" not in text
     assert "USER app" in text
     assert 'CMD ["dvc", "--version"]' in text
+
+
+def test_ui_dockerfile_runs_streamlit_on_8501_non_root():
+    text = _read("ui.Dockerfile")
+    assert "FROM python:3.12-slim" in text
+    assert "uv pip install --system --no-cache '.[demo]'" in text
+    assert "COPY app ./app" in text
+    assert "USER app" in text
+    assert "EXPOSE 8501" in text
+    assert '"streamlit", "run", "app/streamlit_app.py"' in text
+    assert '"--server.port", "8501"' in text
+    assert '"--server.address", "0.0.0.0"' in text
