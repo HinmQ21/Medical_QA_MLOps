@@ -7,7 +7,7 @@ DEPLOY_TOOLS_DIR := .tools
 HELM := $(DEPLOY_TOOLS_DIR)/bin/helm
 KUBECTL := $(DEPLOY_TOOLS_DIR)/bin/kubectl
 
-.PHONY: install install-pipeline install-deploy-tools test smoke-pipeline smoke-pipeline-local mlflow-register-dry-run register-model dvc-status helm-lint helm-template helm-dry-run docker-build full-pipeline full-pipeline-dry-run smoke-full cloud-provision cloud-gcs-dvc cloud-workload-identity cloud-github-oidc cloud-secrets cloud-deploy cloud-smoke cloud-teardown
+.PHONY: install install-pipeline install-deploy-tools test smoke-pipeline smoke-pipeline-local mlflow-register-dry-run register-model dvc-status helm-lint helm-template helm-dry-run docker-build full-pipeline full-pipeline-dry-run smoke-full cloud-provision cloud-gcs-dvc cloud-workload-identity cloud-github-oidc cloud-secrets cloud-deploy cloud-smoke cloud-teardown demo-ui
 
 .venv:
 	python3.12 -m venv .venv
@@ -99,3 +99,7 @@ cloud-smoke:
 
 cloud-teardown:
 	bash scripts/cloud/teardown.sh
+
+demo-ui:
+	.venv/bin/python -m pip install -e '.[demo]'
+	.venv/bin/streamlit run app/streamlit_app.py --server.port 8501 --server.address 0.0.0.0
