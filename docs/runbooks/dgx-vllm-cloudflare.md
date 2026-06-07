@@ -1,8 +1,9 @@
-# Runbook: DGX-Spark vLLM behind Cloudflare Tunnel
+# Runbook: DGX-Spark vLLM behind a public tunnel
 
 Self-host the trained model on the DGX-Spark and expose it to the GKE API as the
-`vllm` backend. Two long-lived processes run on the DGX under systemd: a vLLM
-OpenAI server **container** (loopback only) and `cloudflared` (tunnel).
+`vllm` backend. Two long-lived pieces run on the DGX: a vLLM OpenAI server
+**container** (loopback only) and a public tunnel — **Tailscale Funnel (recommended,
+no domain)** or a Cloudflare named tunnel.
 
 ## Prerequisites
 - A merged checkpoint dir to serve, e.g. `baseline/outputs/<run>_merged`. If the
@@ -11,8 +12,8 @@ OpenAI server **container** (loopback only) and `cloudflared` (tunnel).
 - Docker with the NVIDIA runtime (DGX-Spark has both) and a vLLM image —
   `vllm/vllm-openai:latest` or `nvcr.io/nvidia/vllm:<tag>-py3` (preferred on the
   GB10 / ARM64 box). Non-Docker alternative: `vllm_venv312` (see baseline/CLAUDE.md).
-- `cloudflared` installed on the DGX, plus a Cloudflare domain for a stable named
-  tunnel (or a quick tunnel for testing — see §2).
+- A public tunnel for the loopback vLLM port (§2): **Tailscale** (no domain — recommended)
+  or `cloudflared` + a Cloudflare domain. A quick tunnel works only for throwaway tests.
 
 ## 1. vLLM OpenAI server (Docker, loopback)
 
@@ -87,13 +88,35 @@ curl -s -H "Authorization: Bearer $(grep -oP '(?<=DGX_LLM_KEY=).*' /etc/medqa-ll
   http://127.0.0.1:8001/v1/models   # expect 200 + medical-qa-llama-gdpo
 ```
 
-## 2. Cloudflare named tunnel
+## 2. Expose the server to GKE (pick one tunnel)
 
-> No domain yet? For a quick **test**, skip this whole section (no login, no domain):
-> `cloudflared tunnel --url http://127.0.0.1:8001` prints an ephemeral
-> `https://<random>.trycloudflare.com` — use it as `LLM_BASE_URL` (append `/v1`).
-> The URL changes on every restart, so it's test-only; a stable demo needs the named
-> tunnel below (requires a Cloudflare domain). No-domain stable alternative: Tailscale Funnel.
+The GKE API reaches the DGX over a tunnel; its URL becomes the GKE `LLM_BASE_URL`, so it
+must be **stable**. Do NOT use a quick tunnel for a demo — it exits on the first
+connection drop and its URL rotates on every restart. (Quick **test** only, no
+login/domain: `cloudflared tunnel --url http://127.0.0.1:8001` → ephemeral
+`https://<random>.trycloudflare.com`; set it as `LLM_BASE_URL` + `/v1` and expect it to
+die within hours.)
+
+### 2a. Tailscale Funnel (recommended — stable URL, no domain)
+
+Public HTTPS at `https://<host>.<tailnet>.ts.net`, nothing to buy; `tailscaled`
+auto-reconnects and the Funnel config (`--bg`) survives reboot — far more robust than a
+quick tunnel. Set `LLM_BASE_URL` once and never touch it again.
+
+```bash
+curl -fsSL https://tailscale.com/install.sh | sh    # arm64-aware
+sudo tailscale up                                   # open the printed auth URL to log in
+# Admin console (login.tailscale.com/admin): DNS -> enable MagicDNS + HTTPS Certificates;
+# Access Controls -> allow Funnel via nodeAttrs: {"target":["autogroup:member"],"attr":["funnel"]}
+sudo tailscale funnel --bg 8001                     # public :443 -> http://127.0.0.1:8001
+tailscale funnel status                             # prints https://<host>.<tailnet>.ts.net
+tailscale status --json | python3 -c 'import sys,json;print(json.load(sys.stdin)["Self"]["DNSName"])'  # FQDN
+```
+
+Then `LLM_BASE_URL = https://<host>.<tailnet>.ts.net/v1` (no port, keep `/v1`). vLLM's
+`--api-key` still gates the (public) Funnel endpoint, so auth is enforced over the internet.
+
+### 2b. Cloudflare named tunnel (alternative — needs a Cloudflare domain)
 
 ```bash
 cloudflared tunnel login
