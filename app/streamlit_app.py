@@ -8,10 +8,26 @@ request/response logic lives in ``app.client`` — this module is rendering only
 from __future__ import annotations
 
 import os
+import sys
 
-import streamlit as st
+# ``streamlit run app/streamlit_app.py`` puts this file's own directory (app/)
+# on sys.path[0], NOT the project root, so ``import app`` would fail with
+# ModuleNotFoundError. Prepend the project root (the parent of this file's
+# directory) so ``app.client`` resolves the same way it does under pytest
+# (pythonpath=["."]) and inside the container (WORKDIR /app). Must run before
+# the ``app.client`` import below.
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
 
-from app.client import PredictError, build_payload, fetch_version, predict
+import streamlit as st  # noqa: E402  (after sys.path bootstrap above)
+
+from app.client import (  # noqa: E402  (after sys.path bootstrap above)
+    PredictError,
+    build_payload,
+    fetch_version,
+    predict,
+)
 
 DEFAULT_BASE_URL = os.environ.get("API_BASE_URL", "http://medical-qa-nginx:8080")
 ENV_API_KEY = os.environ.get("API_KEY", "")
