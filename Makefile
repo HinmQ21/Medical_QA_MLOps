@@ -49,12 +49,14 @@ helm-lint: $(HELM) $(KUBECTL)
 	$(HELM) lint deploy/helm/retrieval
 	$(HELM) lint deploy/helm/nginx
 	$(HELM) lint deploy/helm/kserve
+	$(HELM) lint deploy/helm/ui
 
 helm-template: $(HELM) $(KUBECTL)
 	$(HELM) template medical-qa-api deploy/helm/api >/dev/null
 	$(HELM) template medical-qa-retrieval deploy/helm/retrieval >/dev/null
 	$(HELM) template medical-qa-nginx deploy/helm/nginx >/dev/null
 	$(HELM) template medical-qa-kserve deploy/helm/kserve >/dev/null
+	$(HELM) template medical-qa-ui deploy/helm/ui >/dev/null
 
 helm-dry-run: $(HELM) $(KUBECTL)
 	$(HELM) template medical-qa-api deploy/helm/api | $(KUBECTL) apply --dry-run=client --validate=false -f -
@@ -66,6 +68,7 @@ docker-build:
 	docker buildx build --platform linux/amd64 -f docker/retrieval.Dockerfile -t medical-qa-retrieval:local --load .
 	docker buildx build --platform linux/amd64 -f docker/kserve-mock.Dockerfile -t medical-qa-kserve-mock:local --load .
 	docker buildx build --platform linux/amd64 -f docker/pipeline-init.Dockerfile -t medical-qa-pipeline-init:local --load .
+	docker buildx build --platform linux/amd64 -f docker/ui.Dockerfile -t medical-qa-ui:local --load .
 
 full-pipeline-dry-run:
 	$(PY) -m mlops.pipelines.run_full --profile full --dry-run
