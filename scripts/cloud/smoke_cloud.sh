@@ -35,11 +35,19 @@ if [ "$DRY_RUN" -eq 1 ]; then
   echo "+ kubectl get service medical-qa-nginx --namespace $K8S_NAMESPACE -o jsonpath=$LB_QUERY"
   IP="LB_IP"
 else
-  IP="$("$KUBECTL" get service medical-qa-nginx --namespace "$K8S_NAMESPACE" -o "jsonpath=$LB_QUERY")"
+  # GCP provisions the LoadBalancer IP asynchronously (1-2 min after the Service is
+  # created), so poll instead of failing on the first empty read.
+  IP=""
+  for attempt in $(seq 1 30); do
+    IP="$("$KUBECTL" get service medical-qa-nginx --namespace "$K8S_NAMESPACE" -o "jsonpath=$LB_QUERY" 2>/dev/null || true)"
+    if [ -n "$IP" ]; then break; fi
+    echo "waiting for nginx LoadBalancer external IP... ($attempt/30)"
+    sleep 10
+  done
 fi
 
 if [ "$DRY_RUN" -eq 0 ] && [ -z "$IP" ]; then
-  echo "ERROR: nginx LoadBalancer has no external IP yet. Is the cluster ready? Wait ~30s and retry." >&2
+  echo "ERROR: nginx LoadBalancer has no external IP after ~5min. Check the cluster/Service." >&2
   exit 1
 fi
 
