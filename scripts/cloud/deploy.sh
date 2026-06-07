@@ -54,6 +54,13 @@ run "$HELM" upgrade --install medical-qa-nginx deploy/helm/nginx \
   --namespace "$K8S_NAMESPACE" \
   -f deploy/helm/nginx/values-prod.yaml
 
+# Streamlit demo UI on its own LoadBalancer; reaches the api through the nginx
+# gateway in-cluster, reusing the gateway API-key Secret (medical-qa-nginx-api-key).
+run "$HELM" upgrade --install medical-qa-ui deploy/helm/ui \
+  --namespace "$K8S_NAMESPACE" \
+  --set image.tag="$IMAGE_TAG" \
+  -f deploy/helm/ui/values-prod.yaml
+
 # KServe is optional. The mock-backend demo needs no InferenceService, and a vanilla
 # Autopilot cluster ships without KServe CRDs — a hard install there aborts with
 # "no matches for kind InferenceService" and fails the whole deploy. Install the chart
