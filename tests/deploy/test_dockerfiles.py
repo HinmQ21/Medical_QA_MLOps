@@ -85,6 +85,7 @@ def test_ui_dockerfile_runs_streamlit_on_8501_non_root():
     text = _read("ui.Dockerfile")
     assert "FROM python:3.12-slim" in text
     assert "uv pip install --system --no-cache '.[demo]'" in text
+    assert "COPY src ./src" in text  # .[demo] builds medical_qa_platform from src/
     assert "COPY app ./app" in text
     assert "USER app" in text
     assert "EXPOSE 8501" in text
