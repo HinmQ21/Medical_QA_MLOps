@@ -68,9 +68,7 @@ def main() -> None:
     cols = st.columns(2)
     for index, letter in enumerate("ABCD"):
         with cols[index % 2]:
-            value = st.text_input(
-                letter, value=seed["options"].get(letter, ""), key=f"opt_{letter}"
-            )
+            value = st.text_input(letter, value=seed["options"].get(letter, ""))
         if value.strip():
             options[letter] = value.strip()
 
