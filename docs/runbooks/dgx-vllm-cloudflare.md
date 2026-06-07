@@ -1,38 +1,53 @@
 # Runbook: DGX-Spark vLLM behind Cloudflare Tunnel
 
 Self-host the trained model on the DGX-Spark and expose it to the GKE API as the
-`vllm` backend. Two long-lived processes run on the DGX under systemd: the vLLM
-OpenAI server (loopback only) and `cloudflared` (named tunnel).
+`vllm` backend. Two long-lived processes run on the DGX under systemd: a vLLM
+OpenAI server **container** (loopback only) and `cloudflared` (tunnel).
 
 ## Prerequisites
-- Merged checkpoint on disk: `baseline/outputs/gdpo_llama32_3b_stage2_v6_1_vllm_merged`
-- `vllm_venv312` present (see baseline/CLAUDE.md)
-- A domain added to Cloudflare (free plan is fine)
-- `cloudflared` installed on the DGX
+- A merged checkpoint dir to serve, e.g. `baseline/outputs/<run>_merged`. If the
+  fine-tuned checkpoint isn't on disk, mount the base model
+  `baseline/models/Llama-3.2-3B-Instruct` first to validate the path end-to-end.
+- Docker with the NVIDIA runtime (DGX-Spark has both) and a vLLM image —
+  `vllm/vllm-openai:latest` or `nvcr.io/nvidia/vllm:<tag>-py3` (preferred on the
+  GB10 / ARM64 box). Non-Docker alternative: `vllm_venv312` (see baseline/CLAUDE.md).
+- `cloudflared` installed on the DGX, plus a Cloudflare domain for a stable named
+  tunnel (or a quick tunnel for testing — see §2).
 
-## 1. vLLM OpenAI server (loopback)
+## 1. vLLM OpenAI server (Docker, loopback)
 
-Pick a strong key and export it once for the unit:
+vLLM runs as a container bound to host loopback; `cloudflared` is the only thing that
+exposes it. Docker is the recommended path on the GB10 (ARM64 + Blackwell) — the
+image already ships the right CUDA kernels, so there's no venv/torch build to fight.
+
+Pick a strong key and the model dir to mount (the merged fine-tuned checkpoint, or the
+base model to test the plumbing first):
 ```bash
-echo "DGX_LLM_KEY=$(openssl rand -hex 24)" | sudo tee /etc/medqa-llm.env
+echo "DGX_LLM_KEY=$(openssl rand -hex 24)"                                    | sudo tee  /etc/medqa-llm.env
+echo "MODEL_DIR=/home/vcsai/minhlbq/baseline/models/Llama-3.2-3B-Instruct"    | sudo tee -a /etc/medqa-llm.env
 ```
 
-`/etc/systemd/system/medqa-vllm.service`:
+`/etc/systemd/system/medqa-vllm.service` (systemd owns the container lifecycle):
 ```ini
 [Unit]
-Description=medqa vLLM OpenAI server
-After=network-online.target
+Description=medqa vLLM OpenAI server (Docker)
+After=network-online.target docker.service
+Requires=docker.service
 
 [Service]
-User=vcsai
 EnvironmentFile=/etc/medqa-llm.env
-WorkingDirectory=/home/vcsai/minhlbq/baseline
-ExecStart=/home/vcsai/minhlbq/baseline/vllm_venv312/bin/python -m vllm.entrypoints.openai.api_server \
-  --model outputs/gdpo_llama32_3b_stage2_v6_1_vllm_merged \
-  --served-model-name medical-qa-llama-gdpo \
-  --host 127.0.0.1 --port 8001 \
-  --api-key ${DGX_LLM_KEY} \
+# --ipc=host is required by vLLM (shared memory); --rm + foreground so systemd owns it.
+ExecStartPre=-/usr/bin/docker rm -f medqa-vllm
+ExecStart=/usr/bin/docker run --rm --name medqa-vllm \
+  --gpus all --ipc=host \
+  -p 127.0.0.1:8001:8000 \
+  -v ${MODEL_DIR}:/model:ro \
+  -e VLLM_API_KEY=${DGX_LLM_KEY} \
+  vllm/vllm-openai:latest \
+  --model /model --served-model-name medical-qa-llama-gdpo \
+  --host 0.0.0.0 --port 8000 \
   --gpu-memory-utilization 0.6 --max-model-len 4096
+ExecStop=/usr/bin/docker stop medqa-vllm
 Restart=always
 RestartSec=5
 
@@ -40,7 +55,31 @@ RestartSec=5
 WantedBy=multi-user.target
 ```
 
-Note: `--served-model-name medical-qa-llama-gdpo` MUST equal the GKE `LLM_MODEL`.
+Notes:
+- `--served-model-name medical-qa-llama-gdpo` MUST equal the GKE `LLM_MODEL` var.
+- The container listens on `0.0.0.0:8000` *inside* the container; `-p 127.0.0.1:8001:8000`
+  publishes it to host loopback only, so `cloudflared` (and nothing else) can reach it.
+- NVIDIA NGC image instead? Its entrypoint is the nvidia wrapper, so pass the full
+  command: replace the image + args with
+  `nvcr.io/nvidia/vllm:26.01-py3 vllm serve /model --host 0.0.0.0 --port 8000 --served-model-name medical-qa-llama-gdpo --gpu-memory-utilization 0.6 --max-model-len 4096`.
+
+<details><summary>Alternative: run without Docker (vllm_venv312)</summary>
+
+```ini
+[Service]
+User=vcsai
+EnvironmentFile=/etc/medqa-llm.env
+WorkingDirectory=/home/vcsai/minhlbq/baseline
+ExecStart=/home/vcsai/minhlbq/baseline/vllm_venv312/bin/python -m vllm.entrypoints.openai.api_server \
+  --model outputs/<run>_merged \
+  --served-model-name medical-qa-llama-gdpo \
+  --host 127.0.0.1 --port 8001 \
+  --api-key ${DGX_LLM_KEY} \
+  --gpu-memory-utilization 0.6 --max-model-len 4096
+Restart=always
+RestartSec=5
+```
+</details>
 
 ```bash
 sudo systemctl daemon-reload && sudo systemctl enable --now medqa-vllm
@@ -49,6 +88,12 @@ curl -s -H "Authorization: Bearer $(grep -oP '(?<=DGX_LLM_KEY=).*' /etc/medqa-ll
 ```
 
 ## 2. Cloudflare named tunnel
+
+> No domain yet? For a quick **test**, skip this whole section (no login, no domain):
+> `cloudflared tunnel --url http://127.0.0.1:8001` prints an ephemeral
+> `https://<random>.trycloudflare.com` — use it as `LLM_BASE_URL` (append `/v1`).
+> The URL changes on every restart, so it's test-only; a stable demo needs the named
+> tunnel below (requires a Cloudflare domain). No-domain stable alternative: Tailscale Funnel.
 
 ```bash
 cloudflared tunnel login
