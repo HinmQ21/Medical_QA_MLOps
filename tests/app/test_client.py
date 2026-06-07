@@ -123,3 +123,32 @@ def test_fetch_version_returns_json():
 
     out = fetch_version("http://gw:8080", "k", client=_client(handler))
     assert out["backend"] == "vllm"
+
+
+def test_fetch_version_raises_predicterror_on_401():
+    def handler(request):
+        return httpx.Response(401)
+
+    with pytest.raises(PredictError, match="unauthorized"):
+        fetch_version("http://gw:8080", "k", client=_client(handler))
+
+
+def test_fetch_version_raises_predicterror_on_connection_error():
+    def handler(request):
+        raise httpx.ConnectError("down")
+
+    with pytest.raises(PredictError, match="could not reach"):
+        fetch_version("http://gw:8080", "k", client=_client(handler))
+
+
+def test_predict_raises_predicterror_on_non_json_body():
+    def handler(request):
+        return httpx.Response(200, text="<html>oops</html>")
+
+    with pytest.raises(PredictError):
+        predict(
+            "http://gw:8080",
+            "k",
+            {"question": "q", "options": {"A": "x", "B": "y"}},
+            client=_client(handler),
+        )

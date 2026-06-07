@@ -55,9 +55,9 @@ def _request(
 ) -> httpx.Response:
     url = base_url.rstrip("/") + path
     owned = client is None
-    conn = client or httpx.Client(timeout=timeout)
+    conn = client or httpx.Client()
     try:
-        resp = conn.request(method, url, headers=_headers(api_key), **kwargs)
+        resp = conn.request(method, url, headers=_headers(api_key), timeout=timeout, **kwargs)
     except httpx.TimeoutException as exc:
         raise PredictError(f"Hết thời gian chờ — timed out after {timeout:g}s.") from exc
     except httpx.HTTPError as exc:
@@ -80,7 +80,10 @@ def predict(
     client: httpx.Client | None = None,
 ) -> PredictResult:
     resp = _request("POST", base_url, "/predict", api_key, timeout, client, json=payload)
-    data = resp.json()
+    try:
+        data = resp.json()
+    except ValueError as exc:  # json.JSONDecodeError is a subclass of ValueError
+        raise PredictError("Phản hồi không hợp lệ — server returned non-JSON.") from exc
     return PredictResult(
         answer=data.get("answer"),
         evidence=data.get("evidence", []),
@@ -99,4 +102,7 @@ def fetch_version(
     client: httpx.Client | None = None,
 ) -> dict:
     resp = _request("GET", base_url, "/version", api_key, timeout, client)
-    return resp.json()
+    try:
+        return resp.json()
+    except ValueError as exc:  # json.JSONDecodeError is a subclass of ValueError
+        raise PredictError("Phản hồi không hợp lệ — server returned non-JSON.") from exc
