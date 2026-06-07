@@ -94,10 +94,9 @@ def main() -> None:
         st.warning("Mô hình không trả về đáp án hợp lệ (no answer parsed).")
     else:
         st.success(f"Đáp án: **{result.answer}** — {options.get(result.answer, '')}")
-
-    for letter, text in options.items():
-        mark = "✅" if letter == result.answer else "▫️"
-        st.write(f"{mark} **{letter}.** {text}")
+        for letter, text in options.items():
+            mark = "✅" if letter == result.answer else "▫️"
+            st.write(f"{mark} **{letter}.** {text}")
 
     with st.expander(f"Bằng chứng KG ({len(result.evidence)})", expanded=True):
         if result.evidence:

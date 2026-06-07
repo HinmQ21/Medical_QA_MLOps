@@ -21,3 +21,7 @@ def test_streamlit_app_is_render_only_and_imports_client():
     text = (ROOT / "app/streamlit_app.py").read_text()
     assert "from app.client import" in text
     assert "import streamlit" in text
+    # render-only: business logic must live in app.client, not be duplicated here
+    assert "def predict(" not in text
+    assert "def fetch_version(" not in text
+    assert "class PredictResult" not in text

@@ -101,5 +101,5 @@ cloud-teardown:
 	bash scripts/cloud/teardown.sh
 
 demo-ui:
-	.venv/bin/python -m pip install -e '.[demo]'
+	.venv/bin/uv pip install --python .venv/bin/python -e '.[demo]'
 	.venv/bin/streamlit run app/streamlit_app.py --server.port 8501 --server.address 0.0.0.0
