@@ -22,11 +22,13 @@ spec:
             - configMapRef:
                 name: medical-qa-ui-config
           env:
-            # Gateway API key, reused from the nginx Secret; attached server-side.
+            # Gateway API key, reused from the nginx Secret; attached server-side
+            # (never reaches the browser). Not optional: the Secret must exist before
+            # install — scripts/cloud/create_secrets.sh creates it / deploy nginx first.
             - name: API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.auth.existingSecret }}
+                  name: {{ .Values.auth.existingSecret | quote }}
                   key: API_KEY
           ports:
             - name: http
@@ -41,7 +43,10 @@ spec:
             httpGet:
               path: /_stcore/health
               port: http
-            initialDelaySeconds: 5
+            initialDelaySeconds: 10
             periodSeconds: 10
+            # Streamlit cold start (import + first render) can exceed the default
+            # 3 failures; ~60s grace keeps the pod from flapping NotReady on boot.
+            failureThreshold: 6
           resources:
 {{ toYaml .Values.resources | indent 12 }}

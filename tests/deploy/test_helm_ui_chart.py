@@ -39,3 +39,10 @@ def test_ui_values_point_at_nginx_gateway_in_cluster():
     values = yaml.safe_load((root / "deploy/helm/ui/values.yaml").read_text())
     assert values["env"]["apiBaseUrl"] == "http://medical-qa-nginx:8080"
     assert values["auth"]["existingSecret"] == "medical-qa-nginx-api-key"
+
+def test_ui_chart_never_creates_a_secret():
+    # The UI reuses medical-qa-nginx-api-key; it must never template its own Secret.
+    for values in (None, ["values-prod.yaml"]):
+        resources = render_chart("ui", values_files=values)
+        kinds = [r.get("kind") for r in resources]
+        assert "Secret" not in kinds, f"UI chart must not create a Secret (got {kinds})"
