@@ -25,6 +25,7 @@ def test_dry_run_waits_for_rollout_before_probing():
     o = out.stdout
     assert "rollout status deploy/medical-qa-api" in o
     assert "rollout status deploy/medical-qa-retrieval" in o
+    assert "rollout status deploy/medical-qa-ui" in o
 
 
 def test_dry_run_resolves_lb_ip_and_hits_health_version_and_predict():
