@@ -44,3 +44,8 @@ def test_factory_returns_vllm_by_name():
 def test_factory_no_longer_knows_runpod():
     with pytest.raises(ValueError):
         get_backend("runpod")
+
+
+def test_factory_no_longer_knows_kserve():
+    with pytest.raises(ValueError):
+        get_backend("kserve")
