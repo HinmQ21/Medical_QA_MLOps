@@ -72,12 +72,13 @@ def create_app(
         t0 = time.perf_counter()
         trace_id = uuid.uuid4().hex
         evidence = app.state.retrieval.search(req.question, app.state.top_k)
-        messages = build_prompt(req.question, req.options, evidence)
+        messages = build_prompt(req.question, evidence)
         raw = app.state.backend.generate(messages, max_tokens=app.state.max_tokens)
-        answer = parse_answer(raw, valid_letters=set(req.options))
+        answer = parse_answer(raw)
         latency_ms = (time.perf_counter() - t0) * 1000.0
         resp = PredictResponse(
             answer=answer,
+            raw_output=raw,
             evidence=evidence,
             backend=app.state.backend.name,
             model_version=app.state.model_version,

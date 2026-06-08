@@ -26,12 +26,11 @@ def test_ready(tmp_path):
 
 def test_predict_returns_all_fields(tmp_path):
     client = _client(tmp_path)
-    resp = client.post(
-        "/predict", json={"question": "Q?", "options": {"A": "a", "B": "b"}}
-    )
+    resp = client.post("/predict", json={"question": "Q?"})
     assert resp.status_code == 200
     body = resp.json()
     assert body["answer"] == "B"
+    assert "<answer>B</answer>" in body["raw_output"]
     assert body["evidence"] == ["evidence one", "evidence two"]
     assert body["backend"] == "mock"
     assert body["model_version"] == "test-v1"
@@ -39,24 +38,21 @@ def test_predict_returns_all_fields(tmp_path):
     assert body["trace_id"]
 
 
-def test_predict_rejects_invalid_options(tmp_path):
-    resp = _client(tmp_path).post(
-        "/predict", json={"question": "Q?", "options": {"A": "a"}}
-    )
-    assert resp.status_code == 422
+def test_predict_accepts_free_text_without_options(tmp_path):
+    resp = _client(tmp_path).post("/predict", json={"question": "Q?"})
+    assert resp.status_code == 200
 
 
-def test_predict_answer_constrained_to_options(tmp_path):
+def test_predict_answer_not_constrained_to_letters(tmp_path):
+    # valid_letters is gone; any single-letter <answer> is returned verbatim.
     app = create_app(
         backend=MockBackend(answer="D"),
         retrieval=FixtureRetrieval({}),
         model_version="x",
         drift_log_path=str(tmp_path / "d.jsonl"),
     )
-    resp = TestClient(app).post(
-        "/predict", json={"question": "Q?", "options": {"A": "a", "B": "b"}}
-    )
-    assert resp.json()["answer"] is None
+    resp = TestClient(app).post("/predict", json={"question": "Q?"})
+    assert resp.json()["answer"] == "D"
 
 
 def test_predict_writes_drift_row(tmp_path):
@@ -67,16 +63,14 @@ def test_predict_writes_drift_row(tmp_path):
         model_version="x",
         drift_log_path=str(path),
     )
-    TestClient(app).post(
-        "/predict", json={"question": "Q?", "options": {"A": "a", "B": "b"}}
-    )
+    TestClient(app).post("/predict", json={"question": "Q?"})
     assert path.exists()
     assert path.read_text().strip()
 
 
 def test_metrics_endpoint(tmp_path):
     client = _client(tmp_path)
-    client.post("/predict", json={"question": "Q?", "options": {"A": "a", "B": "b"}})
+    client.post("/predict", json={"question": "Q?"})
     resp = client.get("/metrics")
     assert "mqa_requests_total" in resp.text
 
@@ -85,9 +79,7 @@ def test_predict_response_includes_contract_version(tmp_path):
     from medical_qa_platform.retrieval.contract import RETRIEVAL_CONTRACT_VERSION
 
     client = _client(tmp_path)
-    resp = client.post(
-        "/predict", json={"question": "Q?", "options": {"A": "a", "B": "b"}}
-    )
+    resp = client.post("/predict", json={"question": "Q?"})
     assert resp.json()["contract_version"] == RETRIEVAL_CONTRACT_VERSION
 
 
@@ -129,9 +121,7 @@ def test_predict_passes_configured_max_tokens(tmp_path):
         max_tokens=2048,
         drift_log_path=str(tmp_path / "d.jsonl"),
     )
-    TestClient(app).post(
-        "/predict", json={"question": "Q?", "options": {"A": "a", "B": "b"}}
-    )
+    TestClient(app).post("/predict", json={"question": "Q?"})
     assert backend.max_tokens_calls == [2048]
 
 

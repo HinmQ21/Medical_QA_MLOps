@@ -23,6 +23,6 @@ def test_build_prompt_renders_evidence_via_contract_format():
     from medical_qa_platform.api.prompt import build_prompt
     from medical_qa_platform.retrieval.contract import format_evidence
 
-    msgs = build_prompt("Q?", {"A": "x", "B": "y"}, ["fact one", "fact two"])
+    msgs = build_prompt("Q?", ["fact one", "fact two"])
     user = msgs[1]["content"]
     assert format_evidence(["fact one", "fact two"]) in user

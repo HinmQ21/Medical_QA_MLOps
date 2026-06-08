@@ -24,18 +24,19 @@ SYSTEM_PROMPT = (
 
 def build_prompt(
     question: str,
-    options: dict[str, str],
     evidence: list[str],
 ) -> list[dict]:
-    """Return OpenAI-style chat messages for the given MCQ."""
+    """Return OpenAI-style chat messages for the given question.
+
+    The question is free-text and already contains any answer options inline,
+    so no separate options block is rendered.
+    """
     lines = []
     if evidence:
         lines.append("Evidence:")
         lines.extend(f"- {item}" for item in evidence)
         lines.append("")
     lines.append(f"Question: {question}")
-    for letter in sorted(options):
-        lines.append(f"{letter}. {options[letter]}")
     return [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": "\n".join(lines)},

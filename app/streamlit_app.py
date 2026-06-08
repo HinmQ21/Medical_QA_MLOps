@@ -32,15 +32,21 @@ from app.client import (  # noqa: E402  (after sys.path bootstrap above)
 DEFAULT_BASE_URL = os.environ.get("API_BASE_URL", "http://medical-qa-nginx:8080")
 ENV_API_KEY = os.environ.get("API_KEY", "")
 
-PRESETS: dict[str, dict] = {
-    "Đái tháo đường type 2 — first-line": {
-        "question": "Which medication is first-line for type 2 diabetes mellitus?",
-        "options": {"A": "Metformin", "B": "Amoxicillin", "C": "Atorvastatin", "D": "Furosemide"},
-    },
-    "Nhồi máu cơ tim — marker": {
-        "question": "Which serum marker is most specific for acute myocardial infarction?",
-        "options": {"A": "Troponin I", "B": "Amylase", "C": "ALT", "D": "Creatinine"},
-    },
+PRESETS: dict[str, str] = {
+    "Đái tháo đường type 2 — first-line": (
+        "Which medication is first-line for type 2 diabetes mellitus?\n"
+        "A) Metformin\n"
+        "B) Amoxicillin\n"
+        "C) Atorvastatin\n"
+        "D) Furosemide"
+    ),
+    "Nhồi máu cơ tim — marker": (
+        "Which serum marker is most specific for acute myocardial infarction?\n"
+        "A) Troponin I\n"
+        "B) Amylase\n"
+        "C) ALT\n"
+        "D) Creatinine"
+    ),
 }
 
 
@@ -74,25 +80,20 @@ def main() -> None:
     base_url, api_key = _sidebar()
 
     preset = st.selectbox("Câu hỏi mẫu", ["(tự nhập)", *PRESETS])
-    seed = PRESETS.get(
-        preset, {"question": "", "options": {"A": "", "B": "", "C": "", "D": ""}}
-    )
+    seed = PRESETS.get(preset, "")
 
-    question = st.text_area("Câu hỏi", value=seed["question"], height=100)
-    st.write("Phương án:")
-    options: dict[str, str] = {}
-    cols = st.columns(2)
-    for index, letter in enumerate("ABCD"):
-        with cols[index % 2]:
-            value = st.text_input(letter, value=seed["options"].get(letter, ""))
-        if value.strip():
-            options[letter] = value.strip()
+    question = st.text_area(
+        "Câu hỏi (kèm phương án)",
+        value=seed,
+        height=200,
+        help="Dán nguyên câu hỏi trắc nghiệm kèm các phương án, ví dụ 'A) ... B) ...'.",
+    )
 
     if not st.button("Chẩn đoán", type="primary"):
         return
 
     try:
-        payload = build_payload(question, options)
+        payload = build_payload(question)
     except ValueError as exc:
         st.warning(str(exc))
         return
@@ -105,12 +106,12 @@ def main() -> None:
             return
 
     if result.answer is None:
-        st.warning("Mô hình không trả về đáp án hợp lệ (no answer parsed).")
+        st.warning("Mô hình không trả về đáp án dạng chữ cái (no letter parsed); xem phản hồi thô bên dưới.")
     else:
-        st.success(f"Đáp án: **{result.answer}** — {options.get(result.answer, '')}")
-        for letter, text in options.items():
-            mark = "✅" if letter == result.answer else "▫️"
-            st.write(f"{mark} **{letter}.** {text}")
+        st.success(f"Đáp án: **{result.answer}**")
+
+    with st.expander("🧠 Phản hồi thô của mô hình", expanded=False):
+        st.code(result.raw_output or "(rỗng)")
 
     with st.expander(f"Bằng chứng KG ({len(result.evidence)})", expanded=True):
         if result.evidence:

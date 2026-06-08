@@ -41,4 +41,4 @@ def test_dry_run_resolves_lb_ip_and_hits_health_version_and_predict():
     assert "/version" in o
     assert "/predict" in o
     assert '"question"' in o
-    assert '"options"' in o
+    assert '"options"' not in o
