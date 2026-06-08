@@ -520,6 +520,8 @@ def test_dry_run_chains_the_building_blocks_in_order():
     # routes the api at the in-cluster predictor with the llm backend
     assert "env.modelBackend=llm" in o
     assert "medical-qa-kserve-predictor.medical-qa.svc.cluster.local/v1" in o
+    # provisions a ZONAL cluster (not the regional default) — free-trial cost guard
+    assert "--location asia-southeast1-a" in o
     # waits for the InferenceService before smoke
     assert "wait --for=condition=Ready isvc/medical-qa-kserve" in o
 ```
@@ -548,9 +550,13 @@ KUBECTL="$REPO_ROOT/.tools/bin/kubectl"
 # the api routed at the in-cluster predictor Service. Set before sourcing config so
 # config defaults (GKE_ZONE etc.) are available, then derive the rest.
 export GKE_CLUSTER="${GKE_CLUSTER:-medical-qa-llm}"
+# Capture a caller-supplied location BEFORE config.sh defaults GKE_LOCATION to the
+# region. This orchestrator always targets a *zonal* Standard cluster, so fall back
+# to GKE_ZONE (not the region) when the caller didn't pin a location.
+GKE_LOCATION_OVERRIDE="${GKE_LOCATION:-}"
 # shellcheck source=scripts/cloud/config.sh
 source "$HERE/config.sh"
-export GKE_LOCATION="${GKE_LOCATION:-$GKE_ZONE}"
+export GKE_LOCATION="${GKE_LOCATION_OVERRIDE:-$GKE_ZONE}"
 export MODEL_BACKEND=llm
 export LLM_MODEL="${LLM_MODEL:-qwen2.5-1.5b-instruct}"
 export LLM_BASE_URL="${LLM_BASE_URL:-http://medical-qa-kserve-predictor.${K8S_NAMESPACE}.svc.cluster.local/v1}"
@@ -760,6 +766,7 @@ def test_demo_down_has_llm_host_topology_teardown():
     wf = _load("demo-down.yml")
     inputs = _triggers(wf)["workflow_dispatch"]["inputs"]
     assert inputs["llm_host"]["type"] == "choice"
+    assert inputs["llm_host"]["default"] == "dgx"
     assert set(inputs["llm_host"]["options"]) == {"dgx", "in-cluster"}
     # tears down the cluster the topology selected
     assert 'get-credentials "$GKE_CLUSTER" --location "$GKE_LOCATION"' in text
@@ -779,7 +786,7 @@ In `.github/workflows/demo-down.yml`, under `inputs:`, add the `llm_host` block 
 
 ```yaml
       llm_host:
-        description: Which demo cluster to tear down (dgx/mock = Autopilot medical-qa; in-cluster = Standard medical-qa-llm)
+        description: Which demo cluster to tear down (dgx = Autopilot medical-qa; in-cluster = Standard medical-qa-llm)
         required: true
         type: choice
         options:
