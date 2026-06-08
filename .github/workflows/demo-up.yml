@@ -19,6 +19,14 @@ on:
           - llm
           - mock
         default: llm
+      llm_host:
+        description: Where the LLM runs when backend=llm (dgx = DGX vLLM via Cloudflare Tunnel; in-cluster = KServe llama.cpp on GKE Standard)
+        required: true
+        type: choice
+        options:
+          - dgx
+          - in-cluster
+        default: dgx
 
 permissions:
   contents: read
@@ -57,19 +65,48 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@v2
 
-      - name: Provision GKE Autopilot
+      - name: Set cluster topology from llm_host
+        run: |
+          if [ "${{ inputs.llm_host }}" = "in-cluster" ]; then
+            {
+              echo "GKE_CLUSTER=medical-qa-llm"
+              echo "GKE_LOCATION=asia-southeast1-a"
+              echo "LLM_BASE_URL=http://medical-qa-kserve-predictor.${K8S_NAMESPACE}.svc.cluster.local/v1"
+              echo "LLM_MODEL=qwen2.5-1.5b-instruct"
+            } >> "$GITHUB_ENV"
+          else
+            {
+              echo "GKE_CLUSTER=medical-qa"
+              echo "GKE_LOCATION=asia-southeast1"
+            } >> "$GITHUB_ENV"
+          fi
+
+      - name: Provision GKE Autopilot (regional)
+        if: inputs.llm_host != 'in-cluster'
         run: bash scripts/cloud/provision_gke.sh
+
+      - name: Provision GKE Standard (zonal)
+        if: inputs.llm_host == 'in-cluster'
+        run: bash scripts/cloud/provision_gke_standard.sh
 
       - uses: google-github-actions/get-gke-credentials@v2
         with:
-          cluster_name: medical-qa
-          location: asia-southeast1
+          cluster_name: ${{ env.GKE_CLUSTER }}
+          location: ${{ env.GKE_LOCATION }}
+
+      - name: Install cert-manager + KServe (in-cluster LLM)
+        if: inputs.llm_host == 'in-cluster'
+        run: bash scripts/cloud/install_kserve.sh
 
       - name: Create nginx API-key secret
         run: bash scripts/cloud/create_secrets.sh
 
-      - name: Deploy charts (mock backend)
+      - name: Deploy charts
         run: bash scripts/cloud/deploy.sh
+
+      - name: Wait for InferenceService (in-cluster LLM)
+        if: inputs.llm_host == 'in-cluster'
+        run: .tools/bin/kubectl -n "$K8S_NAMESPACE" wait --for=condition=Ready isvc/medical-qa-kserve --timeout=600s
 
       - name: Wait for nginx then smoke-test
         run: |

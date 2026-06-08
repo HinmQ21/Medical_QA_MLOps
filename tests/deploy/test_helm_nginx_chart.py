@@ -30,3 +30,13 @@ def test_nginx_chart_renders_configmap_secret_deployment_and_service():
     assert env["name"] == "API_KEY"
     assert env["valueFrom"]["secretKeyRef"]["name"] == "medical-qa-nginx-api-key"
     assert service["spec"]["ports"][0]["port"] == 8080
+
+
+def test_nginx_configmap_sets_map_hash_bucket_size_for_long_keys():
+    # A real API key (>=40 chars) overflows nginx's default map_hash_bucket_size 64
+    # and crashloops with "could not build map_hash". 128 makes any key length safe.
+    text = (ROOT / "deploy/helm/nginx/templates/configmap.yaml").read_text()
+    assert "map_hash_bucket_size 128;" in text
+    resources = render_chart("nginx")
+    conf = find_kind(resources, "ConfigMap", "medical-qa-nginx-config")["data"]["default.conf.template"]
+    assert "map_hash_bucket_size 128;" in conf
