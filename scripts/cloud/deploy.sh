@@ -61,19 +61,22 @@ run "$HELM" upgrade --install medical-qa-ui deploy/helm/ui \
   --set image.tag="$IMAGE_TAG" \
   -f deploy/helm/ui/values-prod.yaml
 
-# KServe is optional. The mock-backend demo needs no InferenceService, and a vanilla
-# Autopilot cluster ships without KServe CRDs — a hard install there aborts with
-# "no matches for kind InferenceService" and fails the whole deploy. Install the chart
-# only when the CRD is present; otherwise skip (non-fatal).
+# KServe is optional. The default demo (mock or vllm->DGX backend) needs no
+# InferenceService, and a vanilla Autopilot cluster ships without KServe CRDs — a hard
+# install there aborts with "no matches for kind InferenceService" and fails the whole
+# deploy. When the CRD IS present (GKE Standard zonal with KServe installed), this
+# deploys the real Qwen2.5-1.5B llama.cpp InferenceService; the image tag is pinned in
+# the chart (upstream ghcr.io/ggml-org/llama.cpp:server), so IMAGE_TAG does not apply.
+# To route the API at it, deploy with MODEL_BACKEND=vllm and LLM_BASE_URL pointing at
+# the in-cluster predictor Service.
 KSERVE_INSTALL=("$HELM" upgrade --install medical-qa-kserve deploy/helm/kserve \
-  --namespace "$K8S_NAMESPACE" \
-  --set image.tag="$IMAGE_TAG")
+  --namespace "$K8S_NAMESPACE")
 if [ "$DRY_RUN" -eq 1 ]; then
   echo "+ ${KSERVE_INSTALL[*]}"
 elif "$KUBECTL" get crd inferenceservices.serving.kserve.io >/dev/null 2>&1; then
   "${KSERVE_INSTALL[@]}"
 else
-  echo "KServe CRD (inferenceservices.serving.kserve.io) not found; skipping kserve chart (mock-backend demo does not need it)."
+  echo "KServe CRD (inferenceservices.serving.kserve.io) not found; skipping kserve chart (mock/DGX-vllm demo does not need it)."
 fi
 
 echo "Deployed all charts (api=$BACKEND) to namespace $K8S_NAMESPACE."

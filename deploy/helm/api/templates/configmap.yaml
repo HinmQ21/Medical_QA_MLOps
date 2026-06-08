@@ -8,7 +8,6 @@ data:
   RETRIEVAL_URL: {{ .Values.env.retrievalUrl | quote }}
   LLM_BASE_URL: {{ .Values.env.llmBaseUrl | quote }}
   LLM_MODEL: {{ .Values.env.llmModel | quote }}
-  KSERVE_URL: {{ .Values.env.kserveUrl | quote }}
   TOP_K: {{ .Values.env.topK | quote }}
   MAX_TOKENS: {{ .Values.env.maxTokens | quote }}
   DRIFT_LOG_PATH: {{ .Values.env.driftLogPath | quote }}

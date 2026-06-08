@@ -31,6 +31,7 @@ def test_api_chart_renders_deployment_service_configmap_and_hpa():
     assert config["data"]["MAX_TOKENS"] == "2048"
     assert "RUNPOD_BASE_URL" not in config["data"]
     assert "RUNPOD_MODEL" not in config["data"]
+    assert "KSERVE_URL" not in config["data"]
     assert service["spec"]["ports"][0]["port"] == 8000
     container = deployment["spec"]["template"]["spec"]["containers"][0]
     assert container["ports"][0]["containerPort"] == 8000

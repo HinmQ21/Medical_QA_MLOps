@@ -1,14 +1,37 @@
+# Real Qwen2.5-1.5B-Instruct InferenceService served by the upstream
+# llama.cpp:server image (OpenAI-compatible /v1). No custom build package: the
+# image is pulled from ghcr.io/ggml-org and the GGUF is downloaded at startup via
+# -hf. The API reaches this endpoint through the vllm backend (LLM_BASE_URL).
+
+# RawDeployment = plain Deployment/Service, no Knative/Istio. Required because the
+# free-tier GKE Standard cluster runs KServe without the Serverless stack.
+deploymentMode: RawDeployment
+
 image:
-  repository: ghcr.io/hinmq21/medical-qa-kserve-mock
-  tag: latest
+  repository: ghcr.io/ggml-org/llama.cpp
+  # `server` is a mutable rolling tag; pin to an immutable digest
+  # (repository@sha256:...) for production to avoid surprise ABI/flag changes.
+  tag: server
   pullPolicy: IfNotPresent
 
-minReplicas: 0
+# Must be >= 1: RawDeployment has no scale-to-zero without KEDA.
+minReplicas: 1
 
+model:
+  # public GGUF repo; the :Q4_K_M tag selects the ~1.1 GB quant.
+  hfRepo: "Qwen/Qwen2.5-1.5B-Instruct-GGUF:Q4_K_M"
+  # served model name advertised on /v1/models (the OpenAI `model` field).
+  servedName: "qwen2.5-1.5b-instruct"
+  contextSize: 4096
+  # e2 vCPUs are hyperthreads; pin llama.cpp threads to physical cores (vCPU/2).
+  threads: 2
+
+# request 2 / burst to 4 vCPU keeps total cluster requests under the 8-vCPU
+# free-trial cap; ~2 GB working set fits 2Gi request / 3Gi limit.
 resources:
   requests:
-    cpu: 100m
-    memory: 256Mi
+    cpu: "2"
+    memory: 2Gi
   limits:
-    cpu: 500m
-    memory: 512Mi
+    cpu: "4"
+    memory: 3Gi

@@ -59,16 +59,6 @@ def test_retrieval_dockerfile_installs_runtime_only_and_does_not_bake_artifacts(
         assert needle not in text
 
 
-def test_kserve_mock_dockerfile_runs_mock_predictor_on_8080():
-    text = _read("kserve-mock.Dockerfile")
-    assert "uv pip install --system --no-cache ." in text
-    assert "USER app" in text
-    assert "EXPOSE 8080" in text
-    assert "medical_qa_platform.serving.kserve_mock_app:create_app" in text
-    assert '"--host", "0.0.0.0"' in text
-    assert '"--port", "8080"' in text
-
-
 def test_pipeline_init_dockerfile_contains_dvc_but_not_runtime_ml_dependencies():
     text = _read("pipeline-init.Dockerfile")
     assert "dvc[gs]>=3.50" in text  # gs extra: keyless GCS pull in the dvc-pull initContainer

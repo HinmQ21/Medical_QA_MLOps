@@ -16,8 +16,4 @@ def get_backend(name: str | None = None) -> ModelBackend:
         from .vllm_backend import VllmBackend
 
         return VllmBackend.from_env()
-    if name == "kserve":
-        from .kserve_backend import KServeBackend
-
-        return KServeBackend.from_env()
     raise ValueError(f"unknown MODEL_BACKEND: {name!r}")

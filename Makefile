@@ -66,7 +66,6 @@ helm-dry-run: $(HELM) $(KUBECTL)
 docker-build:
 	docker buildx build --platform linux/amd64 -f docker/api.Dockerfile -t medical-qa-api:local --load .
 	docker buildx build --platform linux/amd64 -f docker/retrieval.Dockerfile -t medical-qa-retrieval:local --load .
-	docker buildx build --platform linux/amd64 -f docker/kserve-mock.Dockerfile -t medical-qa-kserve-mock:local --load .
 	docker buildx build --platform linux/amd64 -f docker/pipeline-init.Dockerfile -t medical-qa-pipeline-init:local --load .
 	docker buildx build --platform linux/amd64 -f docker/ui.Dockerfile -t medical-qa-ui:local --load .
 
