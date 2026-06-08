@@ -23,5 +23,7 @@ run() {
 
 # Release the public LoadBalancer first so deleting the cluster leaves no orphan.
 run "$HELM" uninstall medical-qa-nginx --namespace "$K8S_NAMESPACE" || true
-run gcloud container clusters delete "$GKE_CLUSTER" --region "$GCP_REGION" --quiet
-echo "Cluster $GKE_CLUSTER deleted; LoadBalancer released. Bucket gs://$DVC_BUCKET kept."
+# --location accepts a region (Autopilot) OR a zone (Standard in-cluster cluster).
+# GKE_LOCATION defaults to the region, so the regional teardown is unchanged.
+run gcloud container clusters delete "$GKE_CLUSTER" --location "$GKE_LOCATION" --quiet
+echo "Cluster $GKE_CLUSTER deleted ($GKE_LOCATION); LoadBalancer released. Bucket gs://$DVC_BUCKET kept."
