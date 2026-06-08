@@ -76,7 +76,7 @@ def _sidebar() -> tuple[str, str]:
 def main() -> None:
     st.set_page_config(page_title="Medical QA Demo", page_icon="🩺")
     st.title("🩺 Medical QA — Demo")
-    st.caption("Nhập câu hỏi trắc nghiệm y khoa; hệ thống truy hồi tri thức (KG) rồi trả đáp án.")
+    st.caption("Nhập câu hỏi trắc nghiệm y khoa; trợ lý suy luận và tự tra cứu tri thức (KG) khi cần.")
 
     base_url, api_key = _sidebar()
 

@@ -10,4 +10,5 @@ data:
   LLM_MODEL: {{ .Values.env.llmModel | quote }}
   TOP_K: {{ .Values.env.topK | quote }}
   MAX_TOKENS: {{ .Values.env.maxTokens | quote }}
+  MAX_TOOL_ITERATIONS: {{ .Values.env.maxToolIterations | quote }}
   DRIFT_LOG_PATH: {{ .Values.env.driftLogPath | quote }}
