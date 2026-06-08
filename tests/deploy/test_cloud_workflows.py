@@ -73,3 +73,22 @@ def test_deploy_auto_wires_llm_and_ensures_llm_secret():
     assert "LLM_MODEL: ${{ vars.LLM_MODEL }}" in text
     # auto-deploy must ensure the LLM secret exists before flipping to llm
     assert "scripts/cloud/create_secrets.sh" in text
+
+
+def test_demo_up_has_llm_host_incluster_path():
+    text = (WF / "demo-up.yml").read_text()
+    wf = _load("demo-up.yml")
+    inputs = _triggers(wf)["workflow_dispatch"]["inputs"]
+    assert inputs["llm_host"]["type"] == "choice"
+    assert inputs["llm_host"]["default"] == "dgx"
+    assert set(inputs["llm_host"]["options"]) == {"dgx", "in-cluster"}
+    # in-cluster topology branch
+    assert "scripts/cloud/provision_gke_standard.sh" in text
+    assert "scripts/cloud/install_kserve.sh" in text
+    assert "medical-qa-kserve-predictor" in text
+    assert "isvc/medical-qa-kserve" in text
+    # the Autopilot path is preserved (guarded, not removed)
+    assert "scripts/cloud/provision_gke.sh" in text
+    # get-credentials is now topology-driven, not hardcoded to medical-qa
+    assert "cluster_name: ${{ env.GKE_CLUSTER }}" in text
+    assert "location: ${{ env.GKE_LOCATION }}" in text
