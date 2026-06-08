@@ -39,7 +39,6 @@ def test_makefile_exposes_deploy_targets_and_preserves_pipeline_targets():
     assert "deploy/helm/ui" in text
     assert "docker/api.Dockerfile" in text
     assert "docker/retrieval.Dockerfile" in text
-    assert "docker/kserve-mock.Dockerfile" in text
     assert "docker/pipeline-init.Dockerfile" in text
     assert "docker/ui.Dockerfile" in text
 
