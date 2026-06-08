@@ -2,7 +2,7 @@ import json
 
 import httpx
 
-from medical_qa_platform.inference.vllm_backend import VllmBackend
+from medical_qa_platform.inference.llm_backend import LLMBackend
 
 
 def _backend(captured: dict, *, status: int = 200, json_body=None):
@@ -20,11 +20,11 @@ def _backend(captured: dict, *, status: int = 200, json_body=None):
         )
 
     client = httpx.Client(transport=httpx.MockTransport(handler))
-    return VllmBackend(base_url="http://pod/v1", model="m", api_key="k", client=client)
+    return LLMBackend(base_url="http://pod/v1", model="m", api_key="k", client=client)
 
 
 def test_name():
-    assert _backend({}).name == "vllm"
+    assert _backend({}).name == "llm"
 
 
 def test_generate_returns_content():
@@ -46,7 +46,7 @@ def test_from_env(monkeypatch):
     monkeypatch.setenv("LLM_BASE_URL", "http://x/v1")
     monkeypatch.setenv("LLM_MODEL", "llama")
     monkeypatch.setenv("LLM_API_KEY", "secret")
-    backend = VllmBackend.from_env()
+    backend = LLMBackend.from_env()
     assert backend.base_url == "http://x/v1"
     assert backend.model == "llama"
     assert backend.api_key == "secret"
@@ -71,5 +71,5 @@ def test_health_check_false_on_transport_error():
         raise httpx.ConnectError("boom")
 
     client = httpx.Client(transport=httpx.MockTransport(handler))
-    backend = VllmBackend(base_url="http://pod/v1", model="m", client=client)
+    backend = LLMBackend(base_url="http://pod/v1", model="m", client=client)
     assert backend.health_check() is False
