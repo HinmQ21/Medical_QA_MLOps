@@ -92,3 +92,17 @@ def test_demo_up_has_llm_host_incluster_path():
     # get-credentials is now topology-driven, not hardcoded to medical-qa
     assert "cluster_name: ${{ env.GKE_CLUSTER }}" in text
     assert "location: ${{ env.GKE_LOCATION }}" in text
+
+
+def test_demo_down_has_llm_host_topology_teardown():
+    text = (WF / "demo-down.yml").read_text()
+    wf = _load("demo-down.yml")
+    inputs = _triggers(wf)["workflow_dispatch"]["inputs"]
+    assert inputs["llm_host"]["type"] == "choice"
+    assert inputs["llm_host"]["default"] == "dgx"
+    assert set(inputs["llm_host"]["options"]) == {"dgx", "in-cluster"}
+    # tears down the cluster the topology selected
+    assert 'get-credentials "$GKE_CLUSTER" --location "$GKE_LOCATION"' in text
+    assert "scripts/cloud/teardown.sh" in text
+    # bucket-delete escape hatch preserved
+    assert "delete_bucket" in text
