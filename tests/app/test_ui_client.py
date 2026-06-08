@@ -14,33 +14,13 @@ def _client(handler):
     return httpx.Client(transport=httpx.MockTransport(handler))
 
 
-def test_build_payload_strips_and_keeps_letters():
-    payload = build_payload("  first-line? ", {"A": "Metformin ", "B": " Insulin"})
-    assert payload == {
-        "question": "first-line?",
-        "options": {"A": "Metformin", "B": "Insulin"},
-    }
+def test_build_payload_strips_question():
+    assert build_payload("  first-line? ") == {"question": "first-line?"}
 
 
 def test_build_payload_rejects_blank_question():
     with pytest.raises(ValueError):
-        build_payload("   ", {"A": "x", "B": "y"})
-
-
-def test_build_payload_drops_empty_options_then_requires_two():
-    with pytest.raises(ValueError):
-        build_payload("q", {"A": "only", "B": "   "})
-
-
-def test_build_payload_rejects_more_than_ten_options():
-    opts = {chr(ord("A") + i): str(i) for i in range(11)}
-    with pytest.raises(ValueError):
-        build_payload("q", opts)
-
-
-def test_build_payload_rejects_non_letter_key():
-    with pytest.raises(ValueError):
-        build_payload("q", {"A": "x", "1": "y"})
+        build_payload("   ")
 
 
 def test_predict_parses_success_and_sends_key():
@@ -51,6 +31,7 @@ def test_predict_parses_success_and_sends_key():
             200,
             json={
                 "answer": "A",
+                "raw_output": "<think>r</think><answer>A</answer>",
                 "evidence": ["e1", "e2"],
                 "backend": "llm",
                 "model_version": "smoke-dev",
@@ -60,14 +41,10 @@ def test_predict_parses_success_and_sends_key():
             },
         )
 
-    res = predict(
-        "http://gw:8080/",
-        "k",
-        {"question": "q", "options": {"A": "x", "B": "y"}},
-        client=_client(handler),
-    )
+    res = predict("http://gw:8080/", "k", {"question": "q"}, client=_client(handler))
     assert isinstance(res, PredictResult)
     assert res.answer == "A"
+    assert res.raw_output == "<think>r</think><answer>A</answer>"
     assert res.evidence == ["e1", "e2"]
     assert res.backend == "llm"
     assert res.trace_id == "abc"
@@ -78,12 +55,7 @@ def test_predict_raises_predicterror_on_401():
         return httpx.Response(401)
 
     with pytest.raises(PredictError, match="unauthorized"):
-        predict(
-            "http://gw:8080",
-            "bad",
-            {"question": "q", "options": {"A": "x", "B": "y"}},
-            client=_client(handler),
-        )
+        predict("http://gw:8080", "bad", {"question": "q"}, client=_client(handler))
 
 
 def test_predict_raises_predicterror_on_timeout():
@@ -91,13 +63,7 @@ def test_predict_raises_predicterror_on_timeout():
         raise httpx.TimeoutException("slow")
 
     with pytest.raises(PredictError, match="timed out"):
-        predict(
-            "http://gw:8080",
-            "k",
-            {"question": "q", "options": {"A": "x", "B": "y"}},
-            timeout=3,
-            client=_client(handler),
-        )
+        predict("http://gw:8080", "k", {"question": "q"}, timeout=3, client=_client(handler))
 
 
 def test_predict_raises_predicterror_on_connection_error():
@@ -105,12 +71,7 @@ def test_predict_raises_predicterror_on_connection_error():
         raise httpx.ConnectError("nope")
 
     with pytest.raises(PredictError, match="could not reach"):
-        predict(
-            "http://gw:8080",
-            "k",
-            {"question": "q", "options": {"A": "x", "B": "y"}},
-            client=_client(handler),
-        )
+        predict("http://gw:8080", "k", {"question": "q"}, client=_client(handler))
 
 
 def test_fetch_version_returns_json():
@@ -146,9 +107,4 @@ def test_predict_raises_predicterror_on_non_json_body():
         return httpx.Response(200, text="<html>oops</html>")
 
     with pytest.raises(PredictError):
-        predict(
-            "http://gw:8080",
-            "k",
-            {"question": "q", "options": {"A": "x", "B": "y"}},
-            client=_client(handler),
-        )
+        predict("http://gw:8080", "k", {"question": "q"}, client=_client(handler))

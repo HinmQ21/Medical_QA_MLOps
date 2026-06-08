@@ -18,6 +18,7 @@ class PredictError(Exception):
 @dataclass
 class PredictResult:
     answer: str | None
+    raw_output: str
     evidence: list[str]
     backend: str
     model_version: str
@@ -26,18 +27,12 @@ class PredictResult:
     trace_id: str
 
 
-def build_payload(question: str, options: dict[str, str]) -> dict:
-    """Validate UI inputs into the /predict request body (mirrors the server contract)."""
+def build_payload(question: str) -> dict:
+    """Validate the UI input into the /predict request body (mirrors the server contract)."""
     question = question.strip()
     if not question:
         raise ValueError("Câu hỏi không được để trống.")
-    clean = {key: value.strip() for key, value in options.items() if value.strip()}
-    if not (2 <= len(clean) <= 10):
-        raise ValueError("Cần 2–10 phương án không rỗng.")
-    for key in clean:
-        if len(key) != 1 or not ("A" <= key <= "Z"):
-            raise ValueError(f"Khóa phương án {key!r} phải là một chữ cái A–Z.")
-    return {"question": question, "options": clean}
+    return {"question": question}
 
 
 def _headers(api_key: str | None) -> dict[str, str]:
@@ -86,6 +81,7 @@ def predict(
         raise PredictError("Phản hồi không hợp lệ — server returned non-JSON.") from exc
     return PredictResult(
         answer=data.get("answer"),
+        raw_output=data.get("raw_output", ""),
         evidence=data.get("evidence", []),
         backend=data.get("backend", ""),
         model_version=data.get("model_version", ""),
