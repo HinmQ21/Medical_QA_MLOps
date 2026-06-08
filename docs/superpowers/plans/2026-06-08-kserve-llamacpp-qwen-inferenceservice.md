@@ -220,7 +220,7 @@ def test_kserve_chart_renders_raw_llamacpp_inferenceservice():
     assert container["image"] == "ghcr.io/ggml-org/llama.cpp:server"
     assert container["ports"][0]["containerPort"] == 8080
     # OpenAI-compatible health gate, not the old /ready mock probe
-    assert container["readinessProbe"]["httpGet"]["path"] == "/health"
+    assert container["readinessProbe"]["httpGet"]["path"] == "/v1/models"
     assert container["startupProbe"]["httpGet"]["path"] == "/health"
     # serves the Qwen2.5-1.5B GGUF, downloaded at startup
     assert "-hf" in container["args"]
@@ -325,8 +325,11 @@ spec:
           periodSeconds: 10
           failureThreshold: 60
         readinessProbe:
+          # /health returns 503 while the single inference slot is busy; readiness
+          # must not flap mid-generation, so probe /v1/models (200 once the model is
+          # loaded, regardless of slot state). startupProbe stays on /health.
           httpGet:
-            path: /health
+            path: /v1/models
             port: 8080
           periodSeconds: 10
         volumeMounts:
@@ -364,7 +367,7 @@ git commit -m "feat(kserve): serve real Qwen2.5-1.5B via upstream llama.cpp (Raw
 
 Replaces the mock predictor image with ghcr.io/ggml-org/llama.cpp:server pulling
 Qwen/Qwen2.5-1.5B-Instruct-GGUF:Q4_K_M at startup. minReplicas=1, request 2/limit
-4 vCPU, 2Gi/3Gi, /health probes, model cache on an emptyDir."
+4 vCPU, 2Gi/3Gi, /health startup + /v1/models readiness probes, model cache on an emptyDir."
 ```
 
 ---
