@@ -52,7 +52,7 @@ if [ "$DRY_RUN" -eq 0 ] && [ -z "$IP" ]; then
 fi
 
 BASE="http://${IP}:8080"
-PAYLOAD='{"question":"Which medication is first-line for type 2 diabetes?","options":{"A":"Metformin","B":"Amoxicillin"}}'
+PAYLOAD='{"question":"Which medication is first-line for type 2 diabetes? A) Metformin B) Amoxicillin"}'
 
 run curl -fsS "$BASE/health"
 if [ "$DRY_RUN" -eq 1 ]; then
