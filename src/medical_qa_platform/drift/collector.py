@@ -16,11 +16,8 @@ class DriftCollector:
         response: PredictResponse,
         n_evidence: int,
     ) -> dict:
-        option_lengths = [len(value) for value in request.options.values()]
         row = {
             "q_token_len": len(request.question.split()),
-            "n_options": len(request.options),
-            "mean_option_len": sum(option_lengths) / len(option_lengths),
             "answer": response.answer if response.answer is not None else "none",
             "no_result": n_evidence == 0,
             "latency_ms": response.latency_ms,

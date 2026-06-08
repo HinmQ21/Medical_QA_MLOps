@@ -37,9 +37,9 @@ def evaluate_smoke(profile: PipelineProfile) -> dict:
         started = time.perf_counter()
         evidence = retrieval.search(example["retrieval_query"], profile.top_k)
         backend = MockBackend(answer=example["mock_answer"])
-        messages = build_prompt(example["question"], example["options"], evidence)
+        messages = build_prompt(example["question"], evidence)
         raw = backend.generate(messages)
-        predicted = parse_answer(raw, valid_letters=set(example["options"]))
+        predicted = parse_answer(raw)
         latency_ms = (time.perf_counter() - started) * 1000.0
         is_correct = predicted == example["answer"]
         correct += int(is_correct)

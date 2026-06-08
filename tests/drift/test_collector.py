@@ -5,12 +5,13 @@ from medical_qa_platform.drift.collector import DriftCollector
 
 
 def _req():
-    return PredictRequest(question="what treats diabetes now", options={"A": "aa", "B": "bbbb"})
+    return PredictRequest(question="what treats diabetes now")
 
 
 def _resp(answer, evidence):
     return PredictResponse(
         answer=answer,
+        raw_output="<answer>x</answer>",
         evidence=evidence,
         backend="mock",
         model_version="dev",
@@ -23,11 +24,11 @@ def _resp(answer, evidence):
 def test_record_computes_features():
     row = DriftCollector(path=None).record(_req(), _resp("A", ["e1"]), n_evidence=1)
     assert row["q_token_len"] == 4
-    assert row["n_options"] == 2
-    assert row["mean_option_len"] == 3.0
     assert row["answer"] == "A"
     assert row["no_result"] is False
     assert row["latency_ms"] == 10.0
+    assert "n_options" not in row
+    assert "mean_option_len" not in row
 
 
 def test_no_result_flag_true_when_zero_evidence():
