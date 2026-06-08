@@ -1,7 +1,7 @@
 import pytest
 
 from medical_qa_platform.inference import get_backend
-from medical_qa_platform.inference.base import ModelBackend
+from medical_qa_platform.inference.base import ChatTurn, ModelBackend
 from medical_qa_platform.inference.mock_backend import MockBackend
 
 
@@ -56,3 +56,11 @@ def test_factory_no_longer_knows_runpod():
 def test_factory_no_longer_knows_kserve():
     with pytest.raises(ValueError):
         get_backend("kserve")
+
+
+def test_mock_chat_returns_chatturn():
+    turn = MockBackend(answer="C").chat([{"role": "user", "content": "x"}])
+    assert isinstance(turn, ChatTurn)
+    assert "<answer>C</answer>" in (turn.content or "")
+    assert turn.tool_calls == []
+    assert turn.finish_reason == "stop"

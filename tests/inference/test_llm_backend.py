@@ -73,3 +73,56 @@ def test_health_check_false_on_transport_error():
     client = httpx.Client(transport=httpx.MockTransport(handler))
     backend = LLMBackend(base_url="http://pod/v1", model="m", client=client)
     assert backend.health_check() is False
+
+
+def test_chat_posts_tools_and_tool_choice():
+    captured = {}
+    _backend(captured).chat(
+        [{"role": "user", "content": "x"}],
+        tools=[{"type": "function", "function": {"name": "t"}}],
+        tool_choice="auto",
+    )
+    assert captured["body"]["tools"][0]["function"]["name"] == "t"
+    assert captured["body"]["tool_choice"] == "auto"
+
+
+def test_chat_omits_tools_when_none():
+    captured = {}
+    _backend(captured).chat([{"role": "user", "content": "x"}])
+    assert "tools" not in captured["body"]
+    assert "tool_choice" not in captured["body"]
+
+
+def test_chat_parses_tool_calls_and_finish_reason():
+    body = {
+        "choices": [
+            {
+                "message": {
+                    "content": None,
+                    "tool_calls": [
+                        {
+                            "id": "call_1",
+                            "type": "function",
+                            "function": {
+                                "name": "search_medical_knowledge",
+                                "arguments": '{"query": "metformin"}',
+                            },
+                        }
+                    ],
+                },
+                "finish_reason": "tool_calls",
+            }
+        ]
+    }
+    turn = _backend({}, json_body=body).chat([{"role": "user", "content": "x"}])
+    assert turn.finish_reason == "tool_calls"
+    assert turn.content is None
+    assert turn.tool_calls[0]["function"]["name"] == "search_medical_knowledge"
+
+
+def test_chat_defaults_finish_reason_and_tool_calls_when_absent():
+    # the default mock body has neither finish_reason nor tool_calls
+    turn = _backend({}).chat([{"role": "user", "content": "x"}])
+    assert turn.content == "<answer>B</answer>"
+    assert turn.tool_calls == []
+    assert turn.finish_reason == "stop"

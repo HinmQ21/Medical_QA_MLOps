@@ -2,7 +2,9 @@
 
 import os
 
-from .base import ModelBackend
+from .base import ChatTurn, ModelBackend
+
+__all__ = ["ChatTurn", "ModelBackend", "get_backend"]
 
 
 def get_backend(name: str | None = None) -> ModelBackend:

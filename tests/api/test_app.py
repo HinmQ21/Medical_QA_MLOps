@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
 from medical_qa_platform.api.app import create_app
-from medical_qa_platform.inference.base import ModelBackend
+from medical_qa_platform.inference.base import ChatTurn, ModelBackend
 from medical_qa_platform.inference.mock_backend import MockBackend
 from medical_qa_platform.retrieval.backends import FixtureRetrieval
 
@@ -98,16 +98,16 @@ class _RecordingBackend(ModelBackend):
     def __init__(self):
         self.max_tokens_calls = []
 
-    def generate(self, messages, max_tokens=512, temperature=0.3):
+    def chat(self, messages, tools=None, tool_choice="auto", max_tokens=512, temperature=0.3):
         self.max_tokens_calls.append(max_tokens)
-        return "<answer>A</answer>"
+        return ChatTurn(content="<answer>A</answer>", tool_calls=[], finish_reason="stop")
 
 
 class _UnhealthyBackend(ModelBackend):
     name = "down"
 
-    def generate(self, messages, max_tokens=512, temperature=0.3):
-        return "<answer>A</answer>"
+    def chat(self, messages, tools=None, tool_choice="auto", max_tokens=512, temperature=0.3):
+        return ChatTurn(content="<answer>A</answer>", tool_calls=[], finish_reason="stop")
 
     def health_check(self):
         return False
