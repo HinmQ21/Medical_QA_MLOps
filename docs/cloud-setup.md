@@ -101,12 +101,13 @@ gcloud storage rm -r "gs://${GCP_PROJECT}-medical-qa-dvc"
   `Demo Down (GKE)` (it releases the LB before deleting the cluster).
 - **Mock answers:** `/predict` returns a deterministic letter from the mock
   backend; retrieval is real.
-- **Real 3B model (vLLM):** the deploy workflows default to the `vllm` backend.
-  Set in GitHub repo settings: **Secret** `LLM_API_KEY` (the DGX vLLM api-key);
-  **Vars** `LLM_BASE_URL` (e.g. `https://llm.<domain>/v1` — must end in `/v1`) and
-  `LLM_MODEL` (e.g. `medical-qa-llama-gdpo`); optional Var `MODEL_BACKEND` to
-  override the default. `Demo Up (GKE)` has a `backend` input (`vllm`|`mock`,
-  default `vllm`); `Auto Deploy` uses `vllm` unless `MODEL_BACKEND` is set. Stand
+- **Real model (`llm` backend):** the deploy workflows default to the `llm` backend
+  (`vllm` still accepted as an alias). Set in GitHub repo settings: **Secret**
+  `LLM_API_KEY` (the DGX vLLM api-key); **Vars** `LLM_BASE_URL` (e.g.
+  `https://llm.<domain>/v1` — must end in `/v1`) and `LLM_MODEL` (e.g.
+  `medical-qa-llama-gdpo`); optional Var `MODEL_BACKEND` to override the default.
+  `Demo Up (GKE)` has a `backend` input (`llm`|`mock`, default `llm`); `Auto Deploy`
+  uses `llm` unless `MODEL_BACKEND` is set. Stand
   up the DGX server first — see [`runbooks/dgx-vllm-cloudflare.md`](runbooks/dgx-vllm-cloudflare.md).
   Run `Demo Up` with `backend: mock` to demo the plumbing when the DGX is offline.
 - **Note:** Keep the `Demo Up` `namespace` input at the default `medical-qa`. The retrieval pod's Workload Identity binding (`setup_workload_identity.sh`) is namespace-scoped; deploying into a different namespace requires re-running that bootstrap script for the new namespace, or the keyless `dvc pull` will fail.

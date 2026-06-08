@@ -52,7 +52,7 @@ def test_predict_parses_success_and_sends_key():
             json={
                 "answer": "A",
                 "evidence": ["e1", "e2"],
-                "backend": "vllm",
+                "backend": "llm",
                 "model_version": "smoke-dev",
                 "contract_version": "v1",
                 "latency_ms": 12.5,
@@ -69,7 +69,7 @@ def test_predict_parses_success_and_sends_key():
     assert isinstance(res, PredictResult)
     assert res.answer == "A"
     assert res.evidence == ["e1", "e2"]
-    assert res.backend == "vllm"
+    assert res.backend == "llm"
     assert res.trace_id == "abc"
 
 
@@ -118,11 +118,11 @@ def test_fetch_version_returns_json():
         assert request.url.path == "/version"
         return httpx.Response(
             200,
-            json={"backend": "vllm", "model_version": "smoke-dev", "contract_version": "v1"},
+            json={"backend": "llm", "model_version": "smoke-dev", "contract_version": "v1"},
         )
 
     out = fetch_version("http://gw:8080", "k", client=_client(handler))
-    assert out["backend"] == "vllm"
+    assert out["backend"] == "llm"
 
 
 def test_fetch_version_raises_predicterror_on_401():

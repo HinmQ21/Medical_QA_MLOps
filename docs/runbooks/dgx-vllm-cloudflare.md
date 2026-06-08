@@ -162,8 +162,8 @@ curl -s -H "Authorization: Bearer <DGX_LLM_KEY>" https://llm.<your-domain>/v1/mo
 export LLM_API_KEY="<DGX_LLM_KEY>"
 bash scripts/cloud/create_secrets.sh        # also (re)creates the nginx key
 
-# deploy the api on the vllm backend (note the /v1 suffix)
-export MODEL_BACKEND=vllm
+# deploy the api on the llm backend (note the /v1 suffix)
+export MODEL_BACKEND=llm
 export LLM_BASE_URL="https://llm.<your-domain>/v1"
 export LLM_MODEL="medical-qa-llama-gdpo"
 bash scripts/cloud/deploy.sh
@@ -184,18 +184,18 @@ i.e. the tunnel and vLLM are both up.
 
 ## Driving it from the GitHub workflows (instead of manual deploy)
 
-The `Demo Up (GKE)` and `Auto Deploy` workflows deploy the `vllm` backend by
-default. One-time GitHub repo config (Settings → Secrets and variables → Actions):
+The `Demo Up (GKE)` and `Auto Deploy` workflows deploy the `llm` backend by
+default (`vllm` still accepted as an alias). One-time GitHub repo config (Settings → Secrets and variables → Actions):
 
 - **Secret** `LLM_API_KEY` — the DGX vLLM `--api-key`.
 - **Var** `LLM_BASE_URL` — e.g. `https://llm.<your-domain>/v1` (must end in `/v1`).
 - **Var** `LLM_MODEL` — e.g. `medical-qa-llama-gdpo` (= `--served-model-name`).
 - **Var** `MODEL_BACKEND` (optional) — set to `mock` to make `Auto Deploy` skip the
-  real model; otherwise it defaults to `vllm`.
+  real model; otherwise it defaults to `llm`.
 
-Then: run **Demo Up (GKE)** (leave `backend: vllm`) to provision + deploy the real
+Then: run **Demo Up (GKE)** (leave `backend: llm`) to provision + deploy the real
 model. After that, every push to `main` that passes CI triggers **Auto Deploy**,
-which re-applies the secrets and rolls the api on `vllm` — provided the DGX server
+which re-applies the secrets and rolls the api on `llm` — provided the DGX server
 and Cloudflare Tunnel are up (otherwise the api pod stays NotReady and the run
 fails loudly). To demo the plumbing with the DGX offline, run **Demo Up** with
 `backend: mock`.
