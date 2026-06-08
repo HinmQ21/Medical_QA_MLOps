@@ -76,7 +76,7 @@ if [ "$DRY_RUN" -eq 1 ]; then
 elif "$KUBECTL" get crd inferenceservices.serving.kserve.io >/dev/null 2>&1; then
   "${KSERVE_INSTALL[@]}"
 else
-  echo "KServe CRD (inferenceservices.serving.kserve.io) not found; skipping kserve chart (mock-backend demo does not need it)."
+  echo "KServe CRD (inferenceservices.serving.kserve.io) not found; skipping kserve chart (mock/DGX-vllm demo does not need it)."
 fi
 
 echo "Deployed all charts (api=$BACKEND) to namespace $K8S_NAMESPACE."

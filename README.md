@@ -98,8 +98,8 @@ has no scale-to-zero without KEDA). It serves Qwen2.5-1.5B-Instruct on CPU via
 llama.cpp; the model answers naturally and the API's answer-parser extracts the letter
 from its `<answer>…</answer>` output. The API consumes it through the `vllm` backend:
 set `MODEL_BACKEND=vllm` and point `LLM_BASE_URL` at the in-cluster predictor Service
-(e.g. `http://medical-qa-kserve-predictor/v1`; confirm the exact Service name with
-`kubectl get svc` after deploy).
+(e.g. `http://medical-qa-kserve-predictor.medical-qa.svc.cluster.local/v1`; confirm
+the exact Service name/namespace with `kubectl get svc` after deploy).
 
 Build images on an x86 CI runner, or locally through `buildx` when needed:
 
@@ -113,8 +113,7 @@ The Docker build target and GitHub Actions workflow therefore pin
 
 The Helm charts cover API, retrieval, NGINX API-key gateway, and a KServe
 llama.cpp `InferenceService` (Qwen2.5-1.5B). Live GKE deployment, GCS DVC remote
-credentials, and
-observability stacks are deferred to Plan 4.
+credentials, and observability stacks are deferred to Plan 4.
 
 ## Cloud Deploy — GKE-only Demo (slim Plan 4)
 
