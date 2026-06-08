@@ -48,3 +48,12 @@ def test_kserve_chart_renders_raw_llamacpp_inferenceservice():
     # model cache lives on a writable volume (container image user-agnostic)
     mounts = {m["name"]: m["mountPath"] for m in container["volumeMounts"]}
     assert mounts["model-cache"] == "/models"
+
+
+def test_kserve_server_runs_with_jinja_for_tool_calling():
+    # --jinja enables OpenAI tool-calling via the model's chat template; the
+    # serving agentic loop depends on the server returning structured tool_calls.
+    resources = render_chart("kserve")
+    isvc = find_kind(resources, "InferenceService", "medical-qa-kserve")
+    args = isvc["spec"]["predictor"]["containers"][0]["args"]
+    assert "--jinja" in args

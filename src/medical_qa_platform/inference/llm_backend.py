@@ -10,7 +10,7 @@ import os
 
 import httpx
 
-from .base import ModelBackend
+from .base import ChatTurn, ModelBackend
 
 
 class LLMBackend(ModelBackend):
@@ -42,24 +42,36 @@ class LLMBackend(ModelBackend):
             return {"Authorization": f"Bearer {self.api_key}"}
         return {}
 
-    def generate(
+    def chat(
         self,
         messages: list[dict],
+        tools: list[dict] | None = None,
+        tool_choice: str = "auto",
         max_tokens: int = 512,
         temperature: float = 0.3,
-    ) -> str:
+    ) -> ChatTurn:
+        body: dict = {
+            "model": self.model,
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+        }
+        if tools is not None:
+            body["tools"] = tools
+            body["tool_choice"] = tool_choice
         resp = self._client.post(
             f"{self.base_url}/chat/completions",
             headers=self._auth_headers(),
-            json={
-                "model": self.model,
-                "messages": messages,
-                "max_tokens": max_tokens,
-                "temperature": temperature,
-            },
+            json=body,
         )
         resp.raise_for_status()
-        return resp.json()["choices"][0]["message"]["content"]
+        choice = resp.json()["choices"][0]
+        message = choice.get("message", {})
+        return ChatTurn(
+            content=message.get("content"),
+            tool_calls=message.get("tool_calls") or [],
+            finish_reason=choice.get("finish_reason") or "stop",
+        )
 
     def health_check(self) -> bool:
         try:

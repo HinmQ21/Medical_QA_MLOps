@@ -12,6 +12,7 @@ class Settings:
     top_k: int = 5
     drift_log_path: str = "drift_log.jsonl"
     max_tokens: int = 512
+    max_tool_iterations: int = 2
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -22,4 +23,5 @@ class Settings:
             top_k=int(os.environ.get("TOP_K", "5")),
             drift_log_path=os.environ.get("DRIFT_LOG_PATH", "drift_log.jsonl"),
             max_tokens=int(os.environ.get("MAX_TOKENS", "512")),
+            max_tool_iterations=int(os.environ.get("MAX_TOOL_ITERATIONS", "2")),
         )

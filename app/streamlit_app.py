@@ -25,6 +25,7 @@ import streamlit as st  # noqa: E402  (after sys.path bootstrap above)
 from app.client import (  # noqa: E402  (after sys.path bootstrap above)
     PredictError,
     build_payload,
+    build_transcript_blocks,
     fetch_version,
     predict,
 )
@@ -75,7 +76,7 @@ def _sidebar() -> tuple[str, str]:
 def main() -> None:
     st.set_page_config(page_title="Medical QA Demo", page_icon="🩺")
     st.title("🩺 Medical QA — Demo")
-    st.caption("Nhập câu hỏi trắc nghiệm y khoa; hệ thống truy hồi tri thức (KG) rồi trả đáp án.")
+    st.caption("Nhập câu hỏi trắc nghiệm y khoa; trợ lý suy luận và tự tra cứu tri thức (KG) khi cần.")
 
     base_url, api_key = _sidebar()
 
@@ -105,15 +106,21 @@ def main() -> None:
             st.error(str(exc))
             return
 
-    if result.answer is None:
-        st.warning("Mô hình không trả về đáp án dạng chữ cái (no letter parsed); xem phản hồi thô bên dưới.")
-    else:
-        st.success(f"Đáp án: **{result.answer}**")
+    # The headline is the per-turn transcript now; the parsed letter is a small badge.
+    if result.answer:
+        st.caption(f"Đáp án (parse tự động): **{result.answer}**")
 
-    with st.expander("🧠 Phản hồi thô của mô hình", expanded=False):
+    st.subheader("Diễn tiến suy luận")
+    blocks = build_transcript_blocks(result.trace or [])
+    if blocks:
+        for label, body in blocks:
+            st.markdown(f"**{label}**")
+            st.code(body or "(rỗng)")
+    else:
+        # No trace (older API / single-turn): fall back to the raw final output.
         st.code(result.raw_output or "(rỗng)")
 
-    with st.expander(f"Bằng chứng KG ({len(result.evidence)})", expanded=True):
+    with st.expander(f"Bằng chứng KG ({len(result.evidence)})", expanded=False):
         if result.evidence:
             for i, evidence in enumerate(result.evidence, 1):
                 st.markdown(f"{i}. {evidence}")

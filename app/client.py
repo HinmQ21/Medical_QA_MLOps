@@ -7,6 +7,7 @@ No Streamlit import — importable and unit-testable in the base venv. The UI
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 
 import httpx
 
@@ -20,6 +21,7 @@ class PredictResult:
     answer: str | None
     raw_output: str
     evidence: list[str]
+    trace: list[dict]
     backend: str
     model_version: str
     contract_version: str
@@ -71,7 +73,7 @@ def predict(
     base_url: str,
     api_key: str | None,
     payload: dict,
-    timeout: float = 30.0,
+    timeout: float = 120.0,
     client: httpx.Client | None = None,
 ) -> PredictResult:
     resp = _request("POST", base_url, "/predict", api_key, timeout, client, json=payload)
@@ -83,6 +85,7 @@ def predict(
         answer=data.get("answer"),
         raw_output=data.get("raw_output", ""),
         evidence=data.get("evidence", []),
+        trace=data.get("trace", []),
         backend=data.get("backend", ""),
         model_version=data.get("model_version", ""),
         contract_version=data.get("contract_version", ""),
@@ -102,3 +105,34 @@ def fetch_version(
         return resp.json()
     except ValueError as exc:  # json.JSONDecodeError is a subclass of ValueError
         raise PredictError("Phản hồi không hợp lệ — server returned non-JSON.") from exc
+
+
+def build_transcript_blocks(trace: list[dict]) -> list[tuple[str, str]]:
+    """Turn the API trace into (label, body) blocks for display.
+
+    Assistant turns are labelled with the search query they issued (if any);
+    tool turns are labelled as KG results. Pure — no Streamlit import — so it is
+    unit-testable in the base venv.
+    """
+    blocks: list[tuple[str, str]] = []
+    for turn in trace:
+        role = turn.get("role")
+        content = turn.get("content") or ""
+        if role == "tool":
+            blocks.append(("📚 Kết quả tri thức (KG)", content))
+            continue
+        label = "🤖 Trợ lý"
+        calls = turn.get("tool_calls") or []
+        if calls:
+            queries = []
+            for call in calls:
+                args = call.get("function", {}).get("arguments", "")
+                try:
+                    parsed = json.loads(args) if isinstance(args, str) else args
+                    query = parsed.get("query", "") if isinstance(parsed, dict) else ""
+                except (json.JSONDecodeError, AttributeError, TypeError):
+                    query = args if isinstance(args, str) else ""
+                queries.append(str(query))
+            label = "🤖 Trợ lý · 🔎 search_medical_knowledge(" + "; ".join(queries) + ")"
+        blocks.append((label, content))
+    return blocks

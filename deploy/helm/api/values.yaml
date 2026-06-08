@@ -18,6 +18,8 @@ env:
   # the trained model emits <think>...</think><answer> sequences far longer than
   # 512 tokens; truncation drops the <answer> tag and yields a null answer.
   maxTokens: "2048"
+  # agentic tool-call rounds before a final forced answer; matches Settings default.
+  maxToolIterations: "2"
   # the container runs non-root with a root-owned /app; write drift telemetry to a
   # writable dir so /predict doesn't 500 on the log append.
   driftLogPath: /tmp/drift_log.jsonl
