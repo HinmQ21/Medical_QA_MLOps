@@ -361,10 +361,13 @@ Create `src/medical_qa_platform/inference/tools.py`:
 ```python
 """The tool schema advertised to the model for native OpenAI function-calling.
 
-Mirrors the training/eval tool definition
-(baseline/scripts/utils/model_adapter.py:MEDICAL_TOOL_DEF) so serving behaves
-like the agentic rollout the model was trained against. Kept in its own module
-so a Llama-family variant can be added later without touching the loop.
+Mirrors the training/eval tool definition used in the RL pipeline so serving
+behaves like the agentic rollout the model was trained against. Kept in its own
+module so a Llama-family variant can be added later without touching the loop.
+
+(Note: do NOT write the literal training-repo path here — a guard test,
+tests/.../test_kg_backend_self_contained.py, forbids the token "baseline" in
+runtime source.)
 """
 
 SEARCH_TOOL_NAME = "search_medical_knowledge"
@@ -543,7 +546,11 @@ Create `src/medical_qa_platform/inference/agent.py`:
 The model decides when to call ``search_medical_knowledge``; this loop executes
 the call against the retrieval service, feeds the result back, and repeats until
 the model answers or the tool-round budget is exhausted. Mirrors the training/eval
-rollout (baseline/scripts/benchmark/grpo_eval/grpo_eval.py).
+rollout from the RL pipeline.
+
+(Note: do NOT write the literal training-repo path here — a guard test,
+tests/.../test_kg_backend_self_contained.py, forbids the token "baseline" in
+runtime source.)
 """
 
 import json
