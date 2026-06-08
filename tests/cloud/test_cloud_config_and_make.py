@@ -50,3 +50,19 @@ def test_config_sh_applies_defaults_when_project_set():
         "asia-southeast1 demo-medical-qa-dvc medical-qa "
         "medical-qa-deployer@demo.iam.gserviceaccount.com"
     )
+
+
+def test_config_sh_defines_zone_location_and_install_versions():
+    script = ROOT / "scripts/cloud/config.sh"
+    text = script.read_text()
+    assert "GKE_ZONE:=${GCP_REGION}-a" in text
+    assert "GKE_LOCATION:=$GCP_REGION" in text
+    assert "CERT_MANAGER_VERSION:=v1.20.2" in text
+    assert "KSERVE_VERSION:=v0.18.0" in text
+    out = subprocess.run(
+        ["bash", "-c", f'GCP_PROJECT=demo source "{script}" && '
+         'echo "$GKE_ZONE $GKE_LOCATION $KSERVE_VERSION"'],
+        capture_output=True, text=True,
+    )
+    assert out.returncode == 0, out.stderr
+    assert out.stdout.strip() == "asia-southeast1-a asia-southeast1 v0.18.0"
