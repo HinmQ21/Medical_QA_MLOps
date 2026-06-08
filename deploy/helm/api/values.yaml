@@ -14,7 +14,6 @@ env:
   retrievalUrl: http://medical-qa-retrieval:8001
   llmBaseUrl: ""
   llmModel: ""
-  kserveUrl: http://medical-qa-kserve/v1/models/medical-qa-smoke:predict
   topK: "5"
   # the trained model emits <think>...</think><answer> sequences far longer than
   # 512 tokens; truncation drops the <answer> tag and yields a null answer.
