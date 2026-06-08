@@ -33,15 +33,16 @@ run "$HELM" upgrade --install medical-qa-retrieval deploy/helm/retrieval \
   --set-file dvc.yaml=dvc.yaml \
   --set-file dvc.lock=dvc.lock
 
-# api defaults to the mock backend (GKE-only demo). Set MODEL_BACKEND=vllm plus
-# LLM_BASE_URL / LLM_MODEL to point at the self-hosted vLLM server on the DGX-Spark
-# (reached via Cloudflare Tunnel); the LLM_API_KEY secret is created separately.
+# api defaults to the mock backend (GKE-only demo). Set MODEL_BACKEND=llm plus
+# LLM_BASE_URL / LLM_MODEL to point at an OpenAI /v1 server (self-hosted vLLM on the
+# DGX-Spark via Cloudflare Tunnel, or the in-cluster llama.cpp InferenceService); the
+# LLM_API_KEY secret is created separately. "vllm" is accepted as a back-compat alias.
 API_SET=(--set image.tag="$IMAGE_TAG")
 BACKEND="${MODEL_BACKEND:-mock}"
-if [ "$BACKEND" = "vllm" ]; then
-  : "${LLM_BASE_URL:?set LLM_BASE_URL (e.g. https://llm.example/v1) for the vllm backend}"
-  : "${LLM_MODEL:?set LLM_MODEL (vllm --served-model-name) for the vllm backend}"
-  API_SET+=(--set env.modelBackend=vllm \
+if [ "$BACKEND" = "llm" ] || [ "$BACKEND" = "vllm" ]; then
+  : "${LLM_BASE_URL:?set LLM_BASE_URL (e.g. https://llm.example/v1) for the llm backend}"
+  : "${LLM_MODEL:?set LLM_MODEL (the served model name) for the llm backend}"
+  API_SET+=(--set env.modelBackend="$BACKEND" \
             --set env.llmBaseUrl="$LLM_BASE_URL" \
             --set env.llmModel="$LLM_MODEL")
 fi
@@ -61,13 +62,13 @@ run "$HELM" upgrade --install medical-qa-ui deploy/helm/ui \
   --set image.tag="$IMAGE_TAG" \
   -f deploy/helm/ui/values-prod.yaml
 
-# KServe is optional. The default demo (mock or vllm->DGX backend) needs no
+# KServe is optional. The default demo (mock or llm backend) needs no
 # InferenceService, and a vanilla Autopilot cluster ships without KServe CRDs — a hard
 # install there aborts with "no matches for kind InferenceService" and fails the whole
 # deploy. When the CRD IS present (GKE Standard zonal with KServe installed), this
 # deploys the real Qwen2.5-1.5B llama.cpp InferenceService; the image tag is pinned in
 # the chart (upstream ghcr.io/ggml-org/llama.cpp:server), so IMAGE_TAG does not apply.
-# To route the API at it, deploy with MODEL_BACKEND=vllm and LLM_BASE_URL pointing at
+# To route the API at it, deploy with MODEL_BACKEND=llm and LLM_BASE_URL pointing at
 # the in-cluster predictor Service.
 KSERVE_INSTALL=("$HELM" upgrade --install medical-qa-kserve deploy/helm/kserve \
   --namespace "$K8S_NAMESPACE")
@@ -76,7 +77,7 @@ if [ "$DRY_RUN" -eq 1 ]; then
 elif "$KUBECTL" get crd inferenceservices.serving.kserve.io >/dev/null 2>&1; then
   "${KSERVE_INSTALL[@]}"
 else
-  echo "KServe CRD (inferenceservices.serving.kserve.io) not found; skipping kserve chart (mock/DGX-vllm demo does not need it)."
+  echo "KServe CRD (inferenceservices.serving.kserve.io) not found; skipping kserve chart (mock/llm demo does not need it)."
 fi
 
 echo "Deployed all charts (api=$BACKEND) to namespace $K8S_NAMESPACE."

@@ -96,8 +96,8 @@ cluster. The `medical-qa-kserve` `InferenceService` runs in **RawDeployment** mo
 **GKE Standard zonal** cluster with KServe installed; `minReplicas: 1` (RawDeployment
 has no scale-to-zero without KEDA). It serves Qwen2.5-1.5B-Instruct on CPU via
 llama.cpp; the model answers naturally and the API's answer-parser extracts the letter
-from its `<answer>…</answer>` output. The API consumes it through the `vllm` backend:
-set `MODEL_BACKEND=vllm` and point `LLM_BASE_URL` at the in-cluster predictor Service
+from its `<answer>…</answer>` output. The API consumes it through the `llm` backend:
+set `MODEL_BACKEND=llm` and point `LLM_BASE_URL` at the in-cluster predictor Service
 (e.g. `http://medical-qa-kserve-predictor.medical-qa.svc.cluster.local/v1`; confirm
 the exact Service name/namespace with `kubectl get svc` after deploy).
 
@@ -118,8 +118,9 @@ credentials, and observability stacks are deferred to Plan 4.
 ## Cloud Deploy — GKE-only Demo (slim Plan 4)
 
 Deploy the stack to GKE Autopilot with one-click GitHub workflows and keyless
-CI/CD. The CI demo uses the **mock** backend; flip to `MODEL_BACKEND=vllm`
-(self-hosted vLLM on the DGX-Spark via Cloudflare Tunnel) for a real model —
+CI/CD. The CI demo uses the **mock** backend; flip to `MODEL_BACKEND=llm`
+(self-hosted vLLM on the DGX-Spark via Cloudflare Tunnel, or the in-cluster
+llama.cpp InferenceService) for a real model —
 see `docs/runbooks/dgx-vllm-cloudflare.md`. Retrieval is always real. See the
 full runbook in [`docs/cloud-setup.md`](docs/cloud-setup.md):
 

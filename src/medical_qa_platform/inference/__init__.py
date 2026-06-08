@@ -12,8 +12,8 @@ def get_backend(name: str | None = None) -> ModelBackend:
         from .mock_backend import MockBackend
 
         return MockBackend()
-    if name == "vllm":
-        from .vllm_backend import VllmBackend
+    if name in ("llm", "vllm"):  # "vllm" is a back-compat alias for the generic LLM/OpenAI backend
+        from .llm_backend import LLMBackend
 
-        return VllmBackend.from_env()
+        return LLMBackend.from_env()
     raise ValueError(f"unknown MODEL_BACKEND: {name!r}")

@@ -35,10 +35,17 @@ def test_factory_unknown_raises():
         get_backend("nope")
 
 
-def test_factory_returns_vllm_by_name():
-    from medical_qa_platform.inference.vllm_backend import VllmBackend
+def test_factory_returns_llm_by_name():
+    from medical_qa_platform.inference.llm_backend import LLMBackend
 
-    assert isinstance(get_backend("vllm"), VllmBackend)
+    assert isinstance(get_backend("llm"), LLMBackend)
+
+
+def test_factory_vllm_alias_maps_to_llm():
+    from medical_qa_platform.inference.llm_backend import LLMBackend
+
+    # "vllm" is kept as a back-compat alias for the generic LLM/OpenAI backend.
+    assert isinstance(get_backend("vllm"), LLMBackend)
 
 
 def test_factory_no_longer_knows_runpod():

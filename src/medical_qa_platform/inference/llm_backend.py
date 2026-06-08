@@ -1,8 +1,8 @@
-"""vLLM (OpenAI-compatible) chat-completions backend.
+"""Generic OpenAI-compatible chat-completions backend.
 
-Talks to any server exposing the OpenAI ``/v1/chat/completions`` API. In this
-project that is a self-hosted vLLM server on the DGX-Spark, reached over a
-Cloudflare Tunnel. Configured via the ``LLM_BASE_URL``, ``LLM_MODEL`` and
+Talks to any server exposing the OpenAI ``/v1`` API — a self-hosted vLLM server
+on the DGX-Spark (reached over a Cloudflare Tunnel) or an in-cluster llama.cpp
+server, among others. Configured via the ``LLM_BASE_URL``, ``LLM_MODEL`` and
 ``LLM_API_KEY`` environment variables.
 """
 
@@ -13,8 +13,8 @@ import httpx
 from .base import ModelBackend
 
 
-class VllmBackend(ModelBackend):
-    name = "vllm"
+class LLMBackend(ModelBackend):
+    name = "llm"
 
     def __init__(
         self,
@@ -30,7 +30,7 @@ class VllmBackend(ModelBackend):
         self._client = client or httpx.Client(timeout=timeout)
 
     @classmethod
-    def from_env(cls) -> "VllmBackend":
+    def from_env(cls) -> "LLMBackend":
         return cls(
             base_url=os.environ.get("LLM_BASE_URL", ""),
             model=os.environ.get("LLM_MODEL", ""),
