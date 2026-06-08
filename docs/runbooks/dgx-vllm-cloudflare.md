@@ -1,7 +1,7 @@
 # Runbook: DGX-Spark vLLM behind a public tunnel
 
-Self-host the trained model on the DGX-Spark and expose it to the GKE API as the
-`vllm` backend. Two long-lived pieces run on the DGX: a vLLM OpenAI server
+Self-host the trained model on the DGX-Spark and expose it to the GKE API via the
+`llm` backend (`vllm` is accepted as an alias). Two long-lived pieces run on the DGX: a vLLM OpenAI server
 **container** (loopback only) and a public tunnel — **Tailscale Funnel (recommended,
 no domain)** or a Cloudflare named tunnel.
 
