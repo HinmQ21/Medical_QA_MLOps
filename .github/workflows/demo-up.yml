@@ -12,13 +12,13 @@ on:
         required: true
         default: medical-qa
       backend:
-        description: Model backend (vllm = real DGX model, mock = deterministic)
+        description: Model backend (llm = real model via LLM_BASE_URL [DGX vLLM or in-cluster llama.cpp], mock = deterministic)
         required: true
         type: choice
         options:
-          - vllm
+          - llm
           - mock
-        default: vllm
+        default: llm
 
 permissions:
   contents: read

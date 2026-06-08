@@ -33,15 +33,16 @@ run "$HELM" upgrade --install medical-qa-retrieval deploy/helm/retrieval \
   --set-file dvc.yaml=dvc.yaml \
   --set-file dvc.lock=dvc.lock
 
-# api defaults to the mock backend (GKE-only demo). Set MODEL_BACKEND=vllm plus
-# LLM_BASE_URL / LLM_MODEL to point at the self-hosted vLLM server on the DGX-Spark
-# (reached via Cloudflare Tunnel); the LLM_API_KEY secret is created separately.
+# api defaults to the mock backend (GKE-only demo). Set MODEL_BACKEND=llm plus
+# LLM_BASE_URL / LLM_MODEL to point at an OpenAI /v1 server (self-hosted vLLM on the
+# DGX-Spark via Cloudflare Tunnel, or the in-cluster llama.cpp InferenceService); the
+# LLM_API_KEY secret is created separately. "vllm" is accepted as a back-compat alias.
 API_SET=(--set image.tag="$IMAGE_TAG")
 BACKEND="${MODEL_BACKEND:-mock}"
-if [ "$BACKEND" = "vllm" ]; then
-  : "${LLM_BASE_URL:?set LLM_BASE_URL (e.g. https://llm.example/v1) for the vllm backend}"
-  : "${LLM_MODEL:?set LLM_MODEL (vllm --served-model-name) for the vllm backend}"
-  API_SET+=(--set env.modelBackend=vllm \
+if [ "$BACKEND" = "llm" ] || [ "$BACKEND" = "vllm" ]; then
+  : "${LLM_BASE_URL:?set LLM_BASE_URL (e.g. https://llm.example/v1) for the llm backend}"
+  : "${LLM_MODEL:?set LLM_MODEL (the served model name) for the llm backend}"
+  API_SET+=(--set env.modelBackend="$BACKEND" \
             --set env.llmBaseUrl="$LLM_BASE_URL" \
             --set env.llmModel="$LLM_MODEL")
 fi

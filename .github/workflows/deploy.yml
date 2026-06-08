@@ -24,7 +24,7 @@ jobs:
       IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
       K8S_NAMESPACE: medical-qa
       NGINX_API_KEY: ${{ secrets.NGINX_API_KEY }}
-      MODEL_BACKEND: ${{ vars.MODEL_BACKEND || 'vllm' }}
+      MODEL_BACKEND: ${{ vars.MODEL_BACKEND || 'llm' }}
       LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
       LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
       LLM_MODEL: ${{ vars.LLM_MODEL }}

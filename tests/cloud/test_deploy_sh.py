@@ -75,3 +75,28 @@ def test_vllm_backend_requires_base_url_and_model():
         ["bash", str(SCRIPT), "--dry-run"], capture_output=True, text=True, env=env
     )
     assert out.returncode != 0
+
+
+def test_dry_run_flips_to_llm_backend_when_requested():
+    env = {
+        **ENV,
+        "MODEL_BACKEND": "llm",
+        "LLM_BASE_URL": "https://llm.example/v1",
+        "LLM_MODEL": "medical-qa-llama-gdpo",
+    }
+    out = subprocess.run(
+        ["bash", str(SCRIPT), "--dry-run"], capture_output=True, text=True, env=env
+    )
+    assert out.returncode == 0, out.stderr
+    o = out.stdout
+    assert "env.modelBackend=llm" in o
+    assert "env.llmBaseUrl=https://llm.example/v1" in o
+    assert "env.llmModel=medical-qa-llama-gdpo" in o
+
+
+def test_llm_backend_requires_base_url_and_model():
+    env = {**ENV, "MODEL_BACKEND": "llm"}
+    out = subprocess.run(
+        ["bash", str(SCRIPT), "--dry-run"], capture_output=True, text=True, env=env
+    )
+    assert out.returncode != 0
