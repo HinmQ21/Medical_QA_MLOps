@@ -64,7 +64,9 @@ Plan 3 adds deployable app-serving artifacts for the runtime package:
 - `docker/api.Dockerfile` builds the FastAPI pre/post-processing API.
 - `docker/retrieval.Dockerfile` builds the KG retrieval service with the `runtime`
   extra, but does not bake KG artifacts or encoder weights into the image.
-- `docker/kserve-mock.Dockerfile` builds the CPU KServe mock predictor.
+- The KServe InferenceService uses the upstream `ghcr.io/ggml-org/llama.cpp:server`
+  image directly (no custom build) and pulls `Qwen/Qwen2.5-1.5B-Instruct-GGUF:Q4_K_M`
+  at startup, exposing the OpenAI-compatible `/v1` API.
 - `docker/pipeline-init.Dockerfile` builds the DVC-capable init image used by the
   retrieval Helm chart to run `dvc pull`.
 
@@ -89,7 +91,15 @@ make helm-dry-run
 
 The KServe chart is structurally tested locally because `kubectl --dry-run=client`
 cannot validate `serving.kserve.io` resources without the KServe CRD installed in a
-cluster.
+cluster. The `medical-qa-kserve` `InferenceService` runs in **RawDeployment** mode
+(plain Deployment/Service, no Knative/Istio) so it deploys on a lean free-tier
+**GKE Standard zonal** cluster with KServe installed; `minReplicas: 1` (RawDeployment
+has no scale-to-zero without KEDA). It serves Qwen2.5-1.5B-Instruct on CPU via
+llama.cpp; the model answers naturally and the API's answer-parser extracts the letter
+from its `<answer>…</answer>` output. The API consumes it through the `vllm` backend:
+set `MODEL_BACKEND=vllm` and point `LLM_BASE_URL` at the in-cluster predictor Service
+(e.g. `http://medical-qa-kserve-predictor/v1`; confirm the exact Service name with
+`kubectl get svc` after deploy).
 
 Build images on an x86 CI runner, or locally through `buildx` when needed:
 
@@ -101,8 +111,9 @@ The development host may be `aarch64`, while the target GKE nodes are `linux/amd
 The Docker build target and GitHub Actions workflow therefore pin
 `--platform linux/amd64`.
 
-The Helm charts cover API, retrieval, NGINX API-key gateway, and KServe mock
-`InferenceService`. Live GKE deployment, GCS DVC remote credentials, and
+The Helm charts cover API, retrieval, NGINX API-key gateway, and a KServe
+llama.cpp `InferenceService` (Qwen2.5-1.5B). Live GKE deployment, GCS DVC remote
+credentials, and
 observability stacks are deferred to Plan 4.
 
 ## Cloud Deploy — GKE-only Demo (slim Plan 4)
