@@ -14,10 +14,19 @@ class PredictRequest(BaseModel):
         return value
 
 
+class Turn(BaseModel):
+    """One turn of the agentic transcript, for display."""
+
+    role: str
+    content: str
+    tool_calls: list[dict] | None = None
+
+
 class PredictResponse(BaseModel):
     answer: str | None
     raw_output: str
     evidence: list[str]
+    trace: list[Turn] = Field(default_factory=list)
     backend: str
     model_version: str
     contract_version: str
