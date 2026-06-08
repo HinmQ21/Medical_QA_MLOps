@@ -2,6 +2,8 @@ apiVersion: serving.kserve.io/v1beta1
 kind: InferenceService
 metadata:
   name: medical-qa-kserve
+  annotations:
+    serving.kserve.io/deploymentMode: {{ .Values.deploymentMode | quote }}
 spec:
   predictor:
     minReplicas: {{ .Values.minReplicas }}
@@ -9,13 +11,48 @@ spec:
       - name: kserve-container
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
+        # The image's entrypoint is llama-server; these are appended as flags.
+        args:
+          - "-hf"
+          - {{ .Values.model.hfRepo | quote }}
+          - "--alias"
+          - {{ .Values.model.servedName | quote }}
+          - "--host"
+          - "0.0.0.0"
+          - "--port"
+          - "8080"
+          - "--ctx-size"
+          - {{ .Values.model.contextSize | quote }}
+          - "--threads"
+          - {{ .Values.model.threads | quote }}
+          - "--cont-batching"
+          - "--jinja"
+        env:
+          # -hf downloads into $LLAMA_CACHE; keep it on a writable volume so the
+          # image's default user (whatever it is) can write the GGUF.
+          - name: LLAMA_CACHE
+            value: /models
         ports:
           - containerPort: 8080
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          # GGUF download (~1.1 GB) + load can take minutes on a cold node:
+          # 10 + 60*10 = up to ~10 min before the pod is failed.
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 60
         readinessProbe:
           httpGet:
-            path: /ready
+            path: /health
             port: 8080
-          initialDelaySeconds: 5
           periodSeconds: 10
+        volumeMounts:
+          - name: model-cache
+            mountPath: /models
         resources:
 {{ toYaml .Values.resources | indent 10 }}
+    volumes:
+      - name: model-cache
+        emptyDir: {}
