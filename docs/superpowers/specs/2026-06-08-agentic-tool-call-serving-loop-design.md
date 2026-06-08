@@ -43,7 +43,7 @@ New flow for `POST /predict`:
 ```
 messages = [system, user(question)]          # NO forced pre-retrieval — model decides
 trace = [], evidence = []
-for i in range(max_iterations + 1):          # max_iterations default 3 (matches training)
+for i in range(max_iterations + 1):          # max_iterations default 2 (training uses 3; lowered for demo latency)
     # Last round offers no tools (and no tool_choice) so the model must answer in text.
     # Sending tool_choice without tools is rejected by some OpenAI servers, so omit both.
     if i == max_iterations:
@@ -194,8 +194,10 @@ def run_agentic_loop(backend, retrieval, question, *, top_k, max_tokens, max_ite
 
 ### Config — `src/medical_qa_platform/config.py`
 
-`Settings` gains `max_tool_iterations: int = 3` (env `MAX_TOOL_ITERATIONS`). Wired through
-`create_app(max_tool_iterations=None)` → `app.state.max_tool_iterations`.
+`Settings` gains `max_tool_iterations: int = 2` (env `MAX_TOOL_ITERATIONS`). Wired through
+`create_app(max_tool_iterations=None)` → `app.state.max_tool_iterations`. (Training uses 3;
+the serving default is 2 to cap worst-case latency at 3 sequential CPU generations.) `max_tokens`
+per turn stays at the existing default of 512 (`Settings.max_tokens`).
 
 ## Testing
 
