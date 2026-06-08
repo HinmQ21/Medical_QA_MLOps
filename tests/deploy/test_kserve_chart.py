@@ -39,7 +39,7 @@ def test_kserve_chart_renders_raw_llamacpp_inferenceservice():
     assert container["image"] == "ghcr.io/ggml-org/llama.cpp:server"
     assert container["ports"][0]["containerPort"] == 8080
     # OpenAI-compatible health gate, not the old /ready mock probe
-    assert container["readinessProbe"]["httpGet"]["path"] == "/health"
+    assert container["readinessProbe"]["httpGet"]["path"] == "/v1/models"
     assert container["startupProbe"]["httpGet"]["path"] == "/health"
     # serves the Qwen2.5-1.5B GGUF, downloaded at startup
     assert "-hf" in container["args"]

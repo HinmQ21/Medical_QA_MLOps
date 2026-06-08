@@ -9,6 +9,8 @@ deploymentMode: RawDeployment
 
 image:
   repository: ghcr.io/ggml-org/llama.cpp
+  # `server` is a mutable rolling tag; pin to an immutable digest
+  # (repository@sha256:...) for production to avoid surprise ABI/flag changes.
   tag: server
   pullPolicy: IfNotPresent
 
