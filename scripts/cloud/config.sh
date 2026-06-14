@@ -12,8 +12,9 @@
 # KServe controller chart is `kserve-resources` in v0.17+, installed via --version).
 : "${CERT_MANAGER_VERSION:=v1.20.2}"
 : "${KSERVE_VERSION:=v0.18.0}"
-# Pinned kube-prometheus-stack chart version for install_monitoring.sh.
-: "${KUBE_PROM_STACK_VERSION:=v65.5.1}"
+# Pinned kube-prometheus-stack chart version for install_monitoring.sh. NOTE: this
+# Helm chart uses UNPREFIXED semver (65.5.1, not v65.5.1, unlike the KServe OCI charts).
+: "${KUBE_PROM_STACK_VERSION:=65.5.1}"
 : "${K8S_NAMESPACE:=medical-qa}"
 : "${DVC_BUCKET:=${GCP_PROJECT}-medical-qa-dvc}"
 : "${GSA_NAME:=medical-qa-retrieval}"

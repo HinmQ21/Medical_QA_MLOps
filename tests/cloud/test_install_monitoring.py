@@ -25,6 +25,10 @@ def test_dry_run_adds_repo_then_installs_stack_pinned():
     add = o.index("repo add prometheus-community")
     inst = o.index("upgrade --install monitoring prometheus-community/kube-prometheus-stack")
     assert add < inst
-    assert "--version v65.5.1" in o          # pinned KUBE_PROM_STACK_VERSION
+    # kube-prometheus-stack chart versions are unprefixed semver (no leading "v").
+    assert "--version 65.5.1" in o           # pinned KUBE_PROM_STACK_VERSION
+    assert "--version v65.5.1" not in o      # guard against the KServe-style v-prefix mistake
     assert "grafana.sidecar.dashboards.enabled=true" in o
     assert "grafana.sidecar.dashboards.searchNamespace=ALL" in o
+    assert "alertmanager.enabled=true" in o
+    assert "rollout status deploy/monitoring-kube-prometheus-operator" in o
