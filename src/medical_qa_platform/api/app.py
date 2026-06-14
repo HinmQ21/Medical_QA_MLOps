@@ -3,7 +3,7 @@
 import time
 import uuid
 
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, HTTPException, Response
 
 from ..config import Settings
 from ..drift.collector import DriftCollector
@@ -93,57 +93,68 @@ def create_app(
     def predict(req: PredictRequest):
         t0 = time.perf_counter()
         trace_id = uuid.uuid4().hex
-        result = run_agentic_loop(
-            app.state.backend,
-            app.state.retrieval,
-            req.question,
-            top_k=app.state.top_k,
-            max_tokens=app.state.max_tokens,
-            max_iterations=app.state.max_tool_iterations,
-        )
-        answer = parse_answer(result.final_content)
-        latency_ms = (time.perf_counter() - t0) * 1000.0
-        resp = PredictResponse(
-            answer=answer,
-            raw_output=result.final_content,
-            evidence=result.evidence,
-            trace=[Turn(**t) for t in result.trace],
-            backend=app.state.backend.name,
-            model_version=app.state.model_version,
-            contract_version=RETRIEVAL_CONTRACT_VERSION,
-            latency_ms=latency_ms,
-            trace_id=trace_id,
-        )
-        if result.tool_call_count == 0:
-            outcome = "not_called"
-        elif not result.evidence:
-            outcome = "empty"
-        else:
-            outcome = "hit"
-        status = "ok" if answer is not None else "no_answer"
-        observe_request(
-            endpoint="/predict",
-            backend=app.state.backend.name,
-            status=status,
-            latency_s=latency_ms / 1000.0,
-        )
-        observe_model(app.state.backend.name, result.model_latency_s)
-        observe_tool(result.tool_call_count, outcome)
-        app.state.collector.record(
-            req, resp, n_evidence=len(result.evidence), tool_call_count=result.tool_call_count
-        )
-        logger.info(
-            "prediction",
-            extra={
-                "trace_id": trace_id,
-                "latency_ms": latency_ms,
-                "backend": app.state.backend.name,
-                "tool_call_count": result.tool_call_count,
-                "n_evidence": len(result.evidence),
-                "status": status,
-            },
-        )
-        return resp
+        try:
+            result = run_agentic_loop(
+                app.state.backend,
+                app.state.retrieval,
+                req.question,
+                top_k=app.state.top_k,
+                max_tokens=app.state.max_tokens,
+                max_iterations=app.state.max_tool_iterations,
+            )
+            answer = parse_answer(result.final_content)
+            latency_ms = (time.perf_counter() - t0) * 1000.0
+            resp = PredictResponse(
+                answer=answer,
+                raw_output=result.final_content,
+                evidence=result.evidence,
+                trace=[Turn(**t) for t in result.trace],
+                backend=app.state.backend.name,
+                model_version=app.state.model_version,
+                contract_version=RETRIEVAL_CONTRACT_VERSION,
+                latency_ms=latency_ms,
+                trace_id=trace_id,
+            )
+            if result.tool_call_count == 0:
+                outcome = "not_called"
+            elif not result.evidence:
+                outcome = "empty"
+            else:
+                outcome = "hit"
+            status = "ok" if answer is not None else "no_answer"
+            observe_request(
+                endpoint="/predict",
+                backend=app.state.backend.name,
+                status=status,
+                latency_s=latency_ms / 1000.0,
+            )
+            observe_model(app.state.backend.name, result.model_latency_s)
+            observe_tool(result.tool_call_count, outcome)
+            app.state.collector.record(
+                req, resp, n_evidence=len(result.evidence), tool_call_count=result.tool_call_count
+            )
+            logger.info(
+                "prediction",
+                extra={
+                    "trace_id": trace_id,
+                    "latency_ms": latency_ms,
+                    "backend": app.state.backend.name,
+                    "tool_call_count": result.tool_call_count,
+                    "n_evidence": len(result.evidence),
+                    "status": status,
+                },
+            )
+            return resp
+        except Exception:
+            latency_ms = (time.perf_counter() - t0) * 1000.0
+            observe_request(
+                endpoint="/predict",
+                backend=app.state.backend.name,
+                status="error",
+                latency_s=latency_ms / 1000.0,
+            )
+            logger.exception("prediction_failed", extra={"trace_id": trace_id})
+            raise HTTPException(status_code=500, detail="prediction failed")
 
     @app.get("/metrics")
     def metrics():

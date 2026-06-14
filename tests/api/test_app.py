@@ -242,3 +242,23 @@ def test_predict_logs_structured_trace_id(tmp_path):
     assert logged, "expected a prediction log carrying trace_id"
     assert logged[-1].trace_id == body["trace_id"]
     assert logged[-1].msg == "prediction"
+
+
+def test_predict_error_increments_metric_and_returns_500(tmp_path):
+    class _Boom(ModelBackend):
+        name = "boom"
+
+        def chat(self, messages, tools=None, tool_choice="auto", max_tokens=512, temperature=0.3):
+            raise RuntimeError("backend exploded")
+
+    app = create_app(
+        backend=_Boom(),
+        retrieval=FixtureRetrieval({}),
+        model_version="x",
+        drift_log_path=str(tmp_path / "d.jsonl"),
+    )
+    client = TestClient(app, raise_server_exceptions=False)
+    resp = client.post("/predict", json={"question": "Q?"})
+    assert resp.status_code == 500
+    text = client.get("/metrics").text
+    assert 'status="error"' in text
