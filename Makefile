@@ -50,6 +50,7 @@ helm-lint: $(HELM) $(KUBECTL)
 	$(HELM) lint deploy/helm/nginx
 	$(HELM) lint deploy/helm/kserve
 	$(HELM) lint deploy/helm/ui
+	$(HELM) lint deploy/helm/monitoring
 
 helm-template: $(HELM) $(KUBECTL)
 	$(HELM) template medical-qa-api deploy/helm/api >/dev/null
@@ -57,6 +58,7 @@ helm-template: $(HELM) $(KUBECTL)
 	$(HELM) template medical-qa-nginx deploy/helm/nginx >/dev/null
 	$(HELM) template medical-qa-kserve deploy/helm/kserve >/dev/null
 	$(HELM) template medical-qa-ui deploy/helm/ui >/dev/null
+	$(HELM) template medical-qa-monitoring deploy/helm/monitoring >/dev/null
 
 helm-dry-run: $(HELM) $(KUBECTL)
 	$(HELM) template medical-qa-api deploy/helm/api | $(KUBECTL) apply --dry-run=client --validate=false -f -
