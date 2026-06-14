@@ -8,6 +8,7 @@ from fastapi import FastAPI, Response
 from ..config import Settings
 from ..drift.collector import DriftCollector
 from ..inference.agent import run_agentic_loop
+from ..observability.logging import configure_logging, get_logger
 from ..observability.metrics import (
     observe_model,
     observe_request,
@@ -20,6 +21,8 @@ from ..retrieval.contract import RETRIEVAL_CONTRACT_VERSION
 from .parser import parse_answer
 from .schemas import PredictRequest, PredictResponse, Turn
 
+logger = get_logger("medical_qa_platform.api")
+
 
 def create_app(
     backend=None,
@@ -30,6 +33,7 @@ def create_app(
     max_tokens: int | None = None,
     max_tool_iterations: int | None = None,
 ) -> FastAPI:
+    configure_logging()
     settings = Settings.from_env()
     app = FastAPI(title="Medical QA API")
     app.state.top_k = top_k if top_k is not None else settings.top_k
@@ -127,6 +131,17 @@ def create_app(
         observe_tool(result.tool_call_count, outcome)
         app.state.collector.record(
             req, resp, n_evidence=len(result.evidence), tool_call_count=result.tool_call_count
+        )
+        logger.info(
+            "prediction",
+            extra={
+                "trace_id": trace_id,
+                "latency_ms": latency_ms,
+                "backend": app.state.backend.name,
+                "tool_call_count": result.tool_call_count,
+                "n_evidence": len(result.evidence),
+                "status": status,
+            },
         )
         return resp
 

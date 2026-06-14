@@ -217,3 +217,28 @@ def test_metrics_include_model_and_tool_and_build_info(tmp_path):
     assert _counter_value(text, sample) == before + 1.0
     assert "mqa_model_latency_seconds" in text
     assert "mqa_build_info" in text
+
+
+def test_predict_logs_structured_trace_id(tmp_path):
+    import logging
+
+    records = []
+
+    class _Cap(logging.Handler):
+        def emit(self, record):
+            records.append(record)
+
+    logger = logging.getLogger("medical_qa_platform.api")
+    handler = _Cap()
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    try:
+        client = _client(tmp_path)
+        body = client.post("/predict", json={"question": "Q?"}).json()
+    finally:
+        logger.removeHandler(handler)
+
+    logged = [r for r in records if getattr(r, "trace_id", None)]
+    assert logged, "expected a prediction log carrying trace_id"
+    assert logged[-1].trace_id == body["trace_id"]
+    assert logged[-1].msg == "prediction"
