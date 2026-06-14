@@ -31,3 +31,32 @@ def test_servicemonitor_selectors_match_real_service_labels():
             f"{svc_name} ServiceMonitor selector {selector} not satisfied by "
             f"Service metadata.labels {svc_labels}"
         )
+
+
+def test_prometheusrule_defines_named_alerts():
+    resources = render_chart("monitoring")
+    rule = find_kind(resources, "PrometheusRule", "medical-qa-alerts")
+    assert rule["metadata"]["labels"]["release"] == "monitoring"
+    alert_names = {
+        r["alert"]
+        for group in rule["spec"]["groups"]
+        for r in group["rules"]
+    }
+    assert alert_names == {
+        "HighErrorRate",
+        "HighLatencyP95",
+        "RetrievalEmptyRateHigh",
+        "TargetDown",
+    }
+
+
+def test_prometheusrule_thresholds_come_from_values():
+    resources = render_chart("monitoring", set_values={"alerts.errorRateThreshold": "0.1"})
+    rule = find_kind(resources, "PrometheusRule", "medical-qa-alerts")
+    exprs = [
+        r["expr"]
+        for group in rule["spec"]["groups"]
+        for r in group["rules"]
+        if r["alert"] == "HighErrorRate"
+    ]
+    assert "0.1" in exprs[0]

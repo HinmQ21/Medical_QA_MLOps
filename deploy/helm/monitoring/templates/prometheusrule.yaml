@@ -1,0 +1,47 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: medical-qa-alerts
+  labels:
+    release: {{ .Values.releaseLabel }}
+spec:
+  groups:
+    - name: medical-qa-serving
+      rules:
+        - alert: HighErrorRate
+          expr: >-
+            sum(rate(mqa_requests_total{status="error"}[5m]))
+            / clamp_min(sum(rate(mqa_requests_total[5m])), 1)
+            > {{ .Values.alerts.errorRateThreshold }}
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Medical QA /predict error rate is high"
+        - alert: HighLatencyP95
+          expr: >-
+            histogram_quantile(0.95,
+              sum(rate(mqa_request_latency_seconds_bucket{endpoint="/predict"}[5m])) by (le))
+            > {{ .Values.alerts.p95LatencySeconds }}
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Medical QA /predict p95 latency is high"
+        - alert: RetrievalEmptyRateHigh
+          expr: >-
+            sum(rate(mqa_tool_outcome_total{outcome="empty"}[15m]))
+            / clamp_min(sum(rate(mqa_tool_outcome_total[15m])), 1)
+            > {{ .Values.alerts.emptyRateThreshold }}
+          for: 15m
+          labels:
+            severity: info
+          annotations:
+            summary: "Tool calls frequently return empty evidence"
+        - alert: TargetDown
+          expr: up{job=~"medical-qa-.*"} == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "A Medical QA scrape target is down"
