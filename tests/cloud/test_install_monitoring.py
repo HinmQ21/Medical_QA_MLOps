@@ -32,3 +32,28 @@ def test_dry_run_adds_repo_then_installs_stack_pinned():
     assert "grafana.sidecar.dashboards.searchNamespace=ALL" in o
     assert "alertmanager.enabled=true" in o
     assert "rollout status deploy/monitoring-kube-prometheus-operator" in o
+
+
+def test_dry_run_omits_grafana_origin_flags_by_default():
+    # Direct localhost port-forward access needs no CSRF/root_url override (Grafana trusts
+    # localhost). Default install must NOT weaken CSRF.
+    out = subprocess.run(
+        ["bash", str(SCRIPT), "--dry-run"], capture_output=True, text=True, env=ENV
+    )
+    assert out.returncode == 0, out.stderr
+    assert "GF_SECURITY_CSRF_TRUSTED_ORIGINS" not in out.stdout
+    assert "GF_SERVER_ROOT_URL" not in out.stdout
+
+
+def test_dry_run_sets_grafana_origin_when_root_host_given():
+    # Reverse-proxy access (e.g. GCP Cloud Shell Web Preview) needs Grafana to trust the
+    # proxied origin, else POST /api/ds/query is rejected with "origin not allowed".
+    host = "3000-cs-abc.cs-asia-east1.cloudshell.dev"
+    env = {**ENV, "GRAFANA_ROOT_HOST": host}
+    out = subprocess.run(
+        ["bash", str(SCRIPT), "--dry-run"], capture_output=True, text=True, env=env
+    )
+    assert out.returncode == 0, out.stderr
+    o = out.stdout
+    assert f"grafana.env.GF_SERVER_ROOT_URL=https://{host}/" in o
+    assert f"grafana.env.GF_SECURITY_CSRF_TRUSTED_ORIGINS={host}" in o

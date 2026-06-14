@@ -27,6 +27,30 @@ IMAGE_TAG=<sha> bash scripts/cloud/deploy.sh
 The "Medical QA Serving" dashboard is auto-imported by the Grafana dashboard sidecar
 (ConfigMap label `grafana_dashboard: "1"`).
 
+### Accessing Grafana through a reverse proxy ("origin not allowed")
+
+`http://localhost:3000` works with **zero config** — Grafana trusts `localhost`. Prefer this.
+
+If instead you reach Grafana through a proxy on a **non-localhost host** — notably **GCP
+Cloud Shell Web Preview** (`<port>-cs-<id>.cs-<region>.cloudshell.dev`) — Grafana 11's CSRF
+check rejects the proxied `Origin` on `POST /api/ds/query` and every panel blanks with
+**"origin not allowed"** (hover the panel's warning triangle to see it). The data pipeline is
+fine; only the browser→Grafana hop is blocked. Note Prometheus's own UI has no such check, so
+it works through the same proxy — use it to confirm the data is present (`mqa_build_info` etc).
+
+Fix durably by telling Grafana to trust that host **at install time** (survives `helm
+upgrade`, unlike a manual `kubectl set env`):
+
+```bash
+# bare host from your browser's URL bar — no scheme, no trailing slash:
+GRAFANA_ROOT_HOST=3000-cs-<id>.cs-<region>.cloudshell.dev \
+  bash scripts/cloud/install_monitoring.sh
+```
+
+Grafana has **no wildcard support** for `csrf_trusted_origins`, and the Cloud Shell host
+changes per VM — so the exact host is required and must be re-set if it changes. See
+`GRAFANA_ROOT_HOST` in `scripts/cloud/config.sh`.
+
 ## Verify scrape targets + alerts
 
 ```bash

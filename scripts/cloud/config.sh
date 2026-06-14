@@ -15,6 +15,15 @@
 # Pinned kube-prometheus-stack chart version for install_monitoring.sh. NOTE: this
 # Helm chart uses UNPREFIXED semver (65.5.1, not v65.5.1, unlike the KServe OCI charts).
 : "${KUBE_PROM_STACK_VERSION:=65.5.1}"
+# Optional Grafana external host for install_monitoring.sh. Grafana 11 rejects POST
+# /api/ds/query when the browser Origin does not match its root_url ("origin not allowed"),
+# which blanks dashboards when Grafana is reached through a reverse proxy with a non-localhost
+# host — notably GCP Cloud Shell Web Preview ("<port>-cs-<id>.cs-<region>.cloudshell.dev").
+# Set this to that bare host (no scheme/path) to configure Grafana's root_url + CSRF trusted
+# origin. Leave empty for direct localhost port-forward access, which Grafana trusts by
+# default (the robust, zero-config path). Grafana has NO wildcard support here and the Cloud
+# Shell host changes per VM, so this is necessarily host-specific, not a static value.
+: "${GRAFANA_ROOT_HOST:=}"
 : "${K8S_NAMESPACE:=medical-qa}"
 : "${DVC_BUCKET:=${GCP_PROJECT}-medical-qa-dvc}"
 : "${GSA_NAME:=medical-qa-retrieval}"
