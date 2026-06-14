@@ -22,34 +22,46 @@ def _resp(answer, evidence):
 
 
 def test_record_computes_features():
-    row = DriftCollector(path=None).record(_req(), _resp("A", ["e1"]), n_evidence=1)
+    row = DriftCollector(path=None).record(
+        _req(), _resp("A", ["e1"]), n_evidence=1, tool_call_count=1
+    )
     assert row["q_token_len"] == 4
     assert row["answer"] == "A"
-    assert row["no_result"] is False
+    assert row["tool_call_count"] == 1
+    assert row["tool_called"] is True
+    assert row["n_evidence"] == 1
+    assert row["tool_outcome"] == "hit"
     assert row["latency_ms"] == 10.0
-    assert "n_options" not in row
-    assert "mean_option_len" not in row
+    assert "no_result" not in row
 
 
-def test_no_result_flag_true_when_zero_evidence():
-    row = DriftCollector(path=None).record(_req(), _resp(None, []), n_evidence=0)
-    assert row["no_result"] is True
+def test_outcome_not_called_when_model_skips_tool():
+    row = DriftCollector(path=None).record(
+        _req(), _resp("A", []), n_evidence=0, tool_call_count=0
+    )
+    assert row["tool_called"] is False
+    assert row["tool_outcome"] == "not_called"
+
+
+def test_outcome_empty_when_tool_called_but_no_evidence():
+    row = DriftCollector(path=None).record(
+        _req(), _resp(None, []), n_evidence=0, tool_call_count=1
+    )
+    assert row["tool_outcome"] == "empty"
     assert row["answer"] == "none"
 
 
 def test_record_does_not_raise_when_path_unwritable():
-    # Drift logging is observability; a write failure (e.g. read-only/root-owned dir
-    # in the container) must never break the prediction path with a 500.
     collector = DriftCollector(path="/no-such-dir-xyz/drift.jsonl")
-    row = collector.record(_req(), _resp("A", ["e1"]), n_evidence=1)  # must not raise
+    row = collector.record(_req(), _resp("A", ["e1"]), n_evidence=1, tool_call_count=1)
     assert row["answer"] == "A"
 
 
 def test_record_appends_jsonl(tmp_path):
     path = tmp_path / "drift.jsonl"
     collector = DriftCollector(path=str(path))
-    collector.record(_req(), _resp("A", ["e1"]), n_evidence=1)
-    collector.record(_req(), _resp("B", []), n_evidence=0)
+    collector.record(_req(), _resp("A", ["e1"]), n_evidence=1, tool_call_count=1)
+    collector.record(_req(), _resp("B", []), n_evidence=0, tool_call_count=0)
     lines = path.read_text().strip().splitlines()
     assert len(lines) == 2
-    assert json.loads(lines[1])["answer"] == "B"
+    assert json.loads(lines[1])["tool_outcome"] == "not_called"
