@@ -134,3 +134,23 @@ def test_max_iterations_zero_answers_in_one_no_tools_call():
     assert res.tool_call_count == 0
     assert len(backend.calls) == 1
     assert backend.calls[0]["tools_none"] is True
+
+
+def test_loop_result_reports_iterations_and_model_latency():
+    from medical_qa_platform.inference.agent import run_agentic_loop
+    from medical_qa_platform.inference.base import ChatTurn, ModelBackend
+    from medical_qa_platform.retrieval.backends import FixtureRetrieval
+
+    class _OneShot(ModelBackend):
+        name = "x"
+
+        def chat(self, messages, tools=None, tool_choice="auto", max_tokens=512, temperature=0.3):
+            return ChatTurn(content="<answer>A</answer>", tool_calls=[], finish_reason="stop")
+
+    result = run_agentic_loop(
+        _OneShot(), FixtureRetrieval({}), "Q?",
+        top_k=5, max_tokens=512, max_iterations=2,
+    )
+    assert result.iterations == 1            # answered on the first round
+    assert result.model_latency_s >= 0.0
+    assert result.tool_call_count == 0

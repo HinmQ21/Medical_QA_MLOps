@@ -193,3 +193,75 @@ def test_predict_skips_retrieval_when_model_makes_no_tool_call(tmp_path):
     )
     TestClient(app).post("/predict", json={"question": "Q?"})
     assert spy.called is False
+
+
+def _counter_value(text: str, sample: str) -> float:
+    # Parse a single Prometheus sample line like
+    #   mqa_tool_outcome_total{outcome="not_called"} 3.0
+    # Returns 0.0 if the series isn't present yet.
+    for line in text.splitlines():
+        if line.startswith(sample + " "):
+            return float(line.rsplit(" ", 1)[1])
+    return 0.0
+
+
+def test_metrics_include_model_and_tool_and_build_info(tmp_path):
+    client = _client(tmp_path)
+    # The prometheus default registry is global, so substring-presence alone could be
+    # satisfied by other tests. Assert the counter *increments* on this /predict to prove
+    # observe_tool is actually wired into the endpoint (MockBackend makes no tool call).
+    sample = 'mqa_tool_outcome_total{outcome="not_called"}'
+    before = _counter_value(client.get("/metrics").text, sample)
+    client.post("/predict", json={"question": "Q?"})
+    text = client.get("/metrics").text
+    assert _counter_value(text, sample) == before + 1.0
+    assert "mqa_model_latency_seconds" in text
+    assert "mqa_build_info" in text
+
+
+def test_predict_logs_structured_trace_id(tmp_path):
+    import logging
+
+    records = []
+
+    class _Cap(logging.Handler):
+        def emit(self, record):
+            records.append(record)
+
+    logger = logging.getLogger("medical_qa_platform.api")
+    handler = _Cap()
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    try:
+        client = _client(tmp_path)
+        body = client.post("/predict", json={"question": "Q?"}).json()
+    finally:
+        logger.removeHandler(handler)
+
+    logged = [r for r in records if getattr(r, "trace_id", None)]
+    assert logged, "expected a prediction log carrying trace_id"
+    assert logged[-1].trace_id == body["trace_id"]
+    assert logged[-1].msg == "prediction"
+
+
+def test_predict_error_increments_metric_and_returns_500(tmp_path):
+    class _Boom(ModelBackend):
+        name = "boom"
+
+        def chat(self, messages, tools=None, tool_choice="auto", max_tokens=512, temperature=0.3):
+            raise RuntimeError("backend exploded")
+
+    app = create_app(
+        backend=_Boom(),
+        retrieval=FixtureRetrieval({}),
+        model_version="x",
+        drift_log_path=str(tmp_path / "d.jsonl"),
+    )
+    client = TestClient(app, raise_server_exceptions=False)
+    resp = client.post("/predict", json={"question": "Q?"})
+    assert resp.status_code == 500
+    # Generic detail only — the internal exception message must not leak to clients.
+    assert resp.json()["detail"] == "prediction failed"
+    assert "backend exploded" not in resp.text
+    text = client.get("/metrics").text
+    assert 'status="error"' in text

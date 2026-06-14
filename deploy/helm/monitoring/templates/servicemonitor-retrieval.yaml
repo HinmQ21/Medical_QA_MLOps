@@ -1,0 +1,15 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: medical-qa-retrieval
+  labels:
+    release: {{ .Values.releaseLabel }}
+spec:
+  jobLabel: app.kubernetes.io/name
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: medical-qa-retrieval
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: {{ .Values.scrapeInterval }}

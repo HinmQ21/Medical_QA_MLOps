@@ -2,6 +2,8 @@ apiVersion: v1
 kind: Service
 metadata:
   name: medical-qa-retrieval
+  labels:
+    app.kubernetes.io/name: medical-qa-retrieval
 spec:
   type: ClusterIP
   selector:

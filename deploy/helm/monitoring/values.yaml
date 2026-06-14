@@ -1,0 +1,10 @@
+# Label kube-prometheus-stack uses to select ServiceMonitors/PrometheusRules. The
+# install_monitoring.sh release name is "monitoring", so the stack's default
+# serviceMonitorSelector/ruleSelector matches release=monitoring.
+releaseLabel: monitoring
+scrapeInterval: 30s
+
+alerts:
+  errorRateThreshold: 0.05        # 5% of /predict requests erroring
+  p95LatencySeconds: 60           # llama.cpp CPU is slow; high ceiling
+  emptyRateThreshold: 0.5         # 50% of tool calls returning empty

@@ -8,6 +8,7 @@ rollout from the RL pipeline.
 
 import json
 from dataclasses import dataclass, field
+from time import perf_counter
 
 # build_prompt is reused intentionally so the loop's initial [system, user] messages
 # stay in sync with the rest of the API. This inference->api import is acyclic
@@ -24,6 +25,8 @@ class LoopResult:
     final_content: str = ""
     evidence: list[str] = field(default_factory=list)
     tool_call_count: int = 0
+    model_latency_s: float = 0.0
+    iterations: int = 0
 
 
 def _query_of(tool_call: dict) -> str:
@@ -53,6 +56,8 @@ def run_agentic_loop(
     # indices 0..max_iterations-1 are tool rounds; index max_iterations is the
     # forced final round (no tools) that must produce the answer.
     for i in range(max_iterations + 1):
+        result.iterations += 1
+        _t = perf_counter()
         if i == max_iterations:
             # Final round: offer no tools so the model must answer in text.
             turn = backend.chat(messages, tools=None, max_tokens=max_tokens)
@@ -63,6 +68,7 @@ def run_agentic_loop(
                 tool_choice="auto",
                 max_tokens=max_tokens,
             )
+        result.model_latency_s += perf_counter() - _t
 
         # Resend with OpenAI-correct content: null (None) on a tool-call-only turn,
         # the text otherwise. The trace entry below always uses a string for display.
