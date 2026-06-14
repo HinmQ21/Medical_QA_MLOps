@@ -94,3 +94,8 @@ def test_dashboard_configmap_carries_valid_json_and_grafana_label():
     titles = {p["title"] for p in dashboard["panels"]}
     assert "Request rate by status" in titles
     assert "Latency p95 (total/model)" in titles
+    assert dashboard["templating"]["list"][0]["query"] == "prometheus"
+    for panel in dashboard["panels"]:
+        assert panel["datasource"]["uid"] == "${datasource}"
+        for target in panel["targets"]:
+            assert target["datasource"]["uid"] == "${datasource}"
