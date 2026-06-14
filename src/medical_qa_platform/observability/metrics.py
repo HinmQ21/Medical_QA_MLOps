@@ -20,6 +20,11 @@ RETRIEVAL_NO_RESULT = Counter(
     "mqa_retrieval_no_result_total",
     "Retrieval calls that returned zero evidence.",
 )
+MODEL_LATENCY = Histogram(
+    "mqa_model_latency_seconds",
+    "Time spent inside model backend.chat() calls per request.",
+    ["backend"],
+)
 
 
 def observe_request(endpoint: str, backend: str, status: str, latency_s: float) -> None:
@@ -31,6 +36,10 @@ def observe_retrieval(latency_s: float, no_result: bool) -> None:
     RETRIEVAL_LATENCY.observe(latency_s)
     if no_result:
         RETRIEVAL_NO_RESULT.inc()
+
+
+def observe_model(backend: str, latency_s: float) -> None:
+    MODEL_LATENCY.labels(backend=backend).observe(latency_s)
 
 
 def render_metrics() -> tuple[bytes, str]:

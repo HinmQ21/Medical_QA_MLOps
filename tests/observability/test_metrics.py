@@ -19,3 +19,10 @@ def test_observe_retrieval_no_result():
     metrics.observe_retrieval(latency_s=0.02, no_result=True)
     text = metrics.render_metrics()[0].decode()
     assert "mqa_retrieval_no_result_total" in text
+
+
+def test_observe_model_appears_in_render():
+    metrics.observe_model(backend="mock", latency_s=0.05)
+    text = metrics.render_metrics()[0].decode()
+    assert "mqa_model_latency_seconds" in text
+    assert 'backend="mock"' in text
