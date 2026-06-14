@@ -42,7 +42,8 @@
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
-          }
+          },
+          "refId": "A"
         }
       ],
       "datasource": {
@@ -67,7 +68,8 @@
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
-          }
+          },
+          "refId": "A"
         },
         {
           "expr": "histogram_quantile(0.95, sum(rate(mqa_model_latency_seconds_bucket[5m])) by (le))",
@@ -75,7 +77,8 @@
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
-          }
+          },
+          "refId": "B"
         },
         {
           "expr": "histogram_quantile(0.95, sum(rate(mqa_retrieval_latency_seconds_bucket[5m])) by (le))",
@@ -83,7 +86,8 @@
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
-          }
+          },
+          "refId": "C"
         }
       ],
       "datasource": {
@@ -108,7 +112,8 @@
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
-          }
+          },
+          "refId": "A"
         }
       ],
       "datasource": {
@@ -134,7 +139,8 @@
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
-          }
+          },
+          "refId": "A"
         }
       ],
       "datasource": {

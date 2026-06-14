@@ -97,5 +97,6 @@ def test_dashboard_configmap_carries_valid_json_and_grafana_label():
     assert dashboard["templating"]["list"][0]["query"] == "prometheus"
     for panel in dashboard["panels"]:
         assert panel["datasource"]["uid"] == "${datasource}"
-        for target in panel["targets"]:
+        for i, target in enumerate(panel["targets"]):
             assert target["datasource"]["uid"] == "${datasource}"
+            assert target["refId"] == chr(ord("A") + i)
