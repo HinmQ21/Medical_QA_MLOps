@@ -147,9 +147,13 @@ def create_app(
             return resp
         except Exception:
             latency_ms = (time.perf_counter() - t0) * 1000.0
+            # Guard the backend lookup the same way /ready does: if the failure happened
+            # before the backend was set, app.state.backend may be absent — don't let the
+            # error handler raise its own AttributeError and mask the original exception.
+            backend_name = getattr(getattr(app.state, "backend", None), "name", "unknown")
             observe_request(
                 endpoint="/predict",
-                backend=app.state.backend.name,
+                backend=backend_name,
                 status="error",
                 latency_s=latency_ms / 1000.0,
             )

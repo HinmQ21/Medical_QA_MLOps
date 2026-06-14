@@ -260,5 +260,8 @@ def test_predict_error_increments_metric_and_returns_500(tmp_path):
     client = TestClient(app, raise_server_exceptions=False)
     resp = client.post("/predict", json={"question": "Q?"})
     assert resp.status_code == 500
+    # Generic detail only — the internal exception message must not leak to clients.
+    assert resp.json()["detail"] == "prediction failed"
+    assert "backend exploded" not in resp.text
     text = client.get("/metrics").text
     assert 'status="error"' in text
