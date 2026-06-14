@@ -46,3 +46,16 @@ def test_observe_tool_records_outcome_and_count():
     assert 'outcome="hit"' in text
     assert 'outcome="not_called"' in text
     assert "mqa_tool_calls_per_request" in text
+
+
+def test_set_build_info_exposes_versions():
+    metrics.set_build_info(
+        model_version="test-v1",
+        contract_version="v1-medembed-small",
+        backend="mock",
+    )
+    text = metrics.render_metrics()[0].decode()
+    assert "mqa_build_info" in text
+    assert 'model_version="test-v1"' in text
+    assert 'contract_version="v1-medembed-small"' in text
+    assert 'backend="mock"' in text

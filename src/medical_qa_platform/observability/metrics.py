@@ -1,6 +1,6 @@
 """Prometheus metrics for the API and retrieval service."""
 
-from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
 
 # Real model backends (llama.cpp CPU, 3B DGX) can take 30-120s; the prometheus default
 # buckets cap at 10s, which saturates +Inf and breaks p95/alerting. Use wide buckets.
@@ -42,6 +42,11 @@ TOOL_CALLS_PER_REQUEST = Histogram(
     "Number of tool calls the model made in one /predict.",
     buckets=(0, 1, 2, 3, 4, 5),
 )
+BUILD_INFO = Gauge(
+    "mqa_build_info",
+    "Deployed version info (value is always 1).",
+    ["model_version", "contract_version", "backend"],
+)
 
 
 def observe_request(endpoint: str, backend: str, status: str, latency_s: float) -> None:
@@ -62,6 +67,14 @@ def observe_model(backend: str, latency_s: float) -> None:
 def observe_tool(tool_call_count: int, outcome: str) -> None:
     TOOL_OUTCOME.labels(outcome=outcome).inc()
     TOOL_CALLS_PER_REQUEST.observe(tool_call_count)
+
+
+def set_build_info(model_version: str | None, contract_version: str, backend: str) -> None:
+    BUILD_INFO.labels(
+        model_version=model_version or "unknown",
+        contract_version=contract_version,
+        backend=backend,
+    ).set(1)
 
 
 def render_metrics() -> tuple[bytes, str]:
