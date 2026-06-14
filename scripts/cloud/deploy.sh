@@ -80,4 +80,17 @@ else
   echo "KServe CRD (inferenceservices.serving.kserve.io) not found; skipping kserve chart (mock/llm demo does not need it)."
 fi
 
+# Monitoring is optional, same shape as KServe: the ServiceMonitor/PrometheusRule
+# kinds only exist once kube-prometheus-stack is installed (run install_monitoring.sh).
+# On a cluster without it, skip non-fatally so the core demo still deploys.
+MONITORING_INSTALL=("$HELM" upgrade --install medical-qa-monitoring deploy/helm/monitoring \
+  --namespace "$K8S_NAMESPACE")
+if [ "$DRY_RUN" -eq 1 ]; then
+  echo "+ ${MONITORING_INSTALL[*]}"
+elif "$KUBECTL" get crd servicemonitors.monitoring.coreos.com >/dev/null 2>&1; then
+  "${MONITORING_INSTALL[@]}"
+else
+  echo "ServiceMonitor CRD (servicemonitors.monitoring.coreos.com) not found; skipping monitoring chart (run install_monitoring.sh first)."
+fi
+
 echo "Deployed all charts (api=$BACKEND) to namespace $K8S_NAMESPACE."

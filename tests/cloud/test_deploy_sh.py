@@ -100,3 +100,17 @@ def test_llm_backend_requires_base_url_and_model():
         ["bash", str(SCRIPT), "--dry-run"], capture_output=True, text=True, env=env
     )
     assert out.returncode != 0
+
+
+def test_dry_run_installs_monitoring_chart():
+    out = subprocess.run(
+        ["bash", str(SCRIPT), "--dry-run"], capture_output=True, text=True, env=ENV
+    )
+    assert out.returncode == 0, out.stderr
+    assert "upgrade --install medical-qa-monitoring deploy/helm/monitoring" in out.stdout
+
+
+def test_monitoring_is_gated_on_servicemonitor_crd():
+    # Same shape as the KServe guard: ServiceMonitor/PrometheusRule kinds only exist after
+    # kube-prometheus-stack is installed, so the live install must be CRD-gated (non-fatal skip).
+    assert "get crd servicemonitors.monitoring.coreos.com" in SCRIPT.read_text()
