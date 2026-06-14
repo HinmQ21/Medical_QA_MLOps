@@ -5,6 +5,7 @@ metadata:
   labels:
     release: {{ .Values.releaseLabel }}
 spec:
+  jobLabel: app.kubernetes.io/name
   selector:
     matchLabels:
       app.kubernetes.io/name: medical-qa-api

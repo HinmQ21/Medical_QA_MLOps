@@ -60,3 +60,24 @@ def test_prometheusrule_thresholds_come_from_values():
         if r["alert"] == "HighErrorRate"
     ]
     assert "0.1" in exprs[0]
+
+
+def test_empty_rate_denominator_excludes_not_called():
+    resources = render_chart("monitoring")
+    rule = find_kind(resources, "PrometheusRule", "medical-qa-alerts")
+    expr = next(
+        r["expr"]
+        for group in rule["spec"]["groups"]
+        for r in group["rules"]
+        if r["alert"] == "RetrievalEmptyRateHigh"
+    )
+    # numerator counts empty; denominator must restrict to actual tool calls.
+    assert 'outcome="empty"' in expr
+    assert 'outcome!="not_called"' in expr
+
+
+def test_servicemonitors_pin_joblabel_for_targetdown():
+    resources = render_chart("monitoring")
+    for name in ("medical-qa-api", "medical-qa-retrieval"):
+        sm = find_kind(resources, "ServiceMonitor", name)
+        assert sm["spec"]["jobLabel"] == "app.kubernetes.io/name"
