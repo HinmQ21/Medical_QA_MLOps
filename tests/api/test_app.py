@@ -195,11 +195,25 @@ def test_predict_skips_retrieval_when_model_makes_no_tool_call(tmp_path):
     assert spy.called is False
 
 
+def _counter_value(text: str, sample: str) -> float:
+    # Parse a single Prometheus sample line like
+    #   mqa_tool_outcome_total{outcome="not_called"} 3.0
+    # Returns 0.0 if the series isn't present yet.
+    for line in text.splitlines():
+        if line.startswith(sample + " "):
+            return float(line.rsplit(" ", 1)[1])
+    return 0.0
+
+
 def test_metrics_include_model_and_tool_and_build_info(tmp_path):
     client = _client(tmp_path)
+    # The prometheus default registry is global, so substring-presence alone could be
+    # satisfied by other tests. Assert the counter *increments* on this /predict to prove
+    # observe_tool is actually wired into the endpoint (MockBackend makes no tool call).
+    sample = 'mqa_tool_outcome_total{outcome="not_called"}'
+    before = _counter_value(client.get("/metrics").text, sample)
     client.post("/predict", json={"question": "Q?"})
     text = client.get("/metrics").text
+    assert _counter_value(text, sample) == before + 1.0
     assert "mqa_model_latency_seconds" in text
-    assert "mqa_tool_outcome_total" in text
-    assert 'outcome="not_called"' in text  # MockBackend makes no tool call
     assert "mqa_build_info" in text
