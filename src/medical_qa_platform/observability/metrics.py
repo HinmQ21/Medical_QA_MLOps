@@ -2,6 +2,10 @@
 
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 
+# Real model backends (llama.cpp CPU, 3B DGX) can take 30-120s; the prometheus default
+# buckets cap at 10s, which saturates +Inf and breaks p95/alerting. Use wide buckets.
+LATENCY_BUCKETS = (0.5, 1, 2, 5, 10, 30, 60, 120, 300)
+
 REQUEST_COUNT = Counter(
     "mqa_requests_total",
     "Total prediction requests.",
@@ -11,10 +15,12 @@ REQUEST_LATENCY = Histogram(
     "mqa_request_latency_seconds",
     "Request latency in seconds.",
     ["endpoint"],
+    buckets=LATENCY_BUCKETS,
 )
 RETRIEVAL_LATENCY = Histogram(
     "mqa_retrieval_latency_seconds",
     "Retrieval latency in seconds.",
+    buckets=LATENCY_BUCKETS,
 )
 RETRIEVAL_NO_RESULT = Counter(
     "mqa_retrieval_no_result_total",
@@ -24,6 +30,7 @@ MODEL_LATENCY = Histogram(
     "mqa_model_latency_seconds",
     "Time spent inside model backend.chat() calls per request.",
     ["backend"],
+    buckets=LATENCY_BUCKETS,
 )
 
 
