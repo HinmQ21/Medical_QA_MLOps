@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: medical-qa-dashboard
+  labels:
+    grafana_dashboard: "1"
+data:
+  medical-qa-serving.json: |-
+{{ .Files.Get "dashboards/medical-qa-serving.json" | indent 4 }}

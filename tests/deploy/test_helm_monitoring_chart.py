@@ -1,3 +1,5 @@
+import json
+
 from tests.deploy.helm_helpers import find_kind, render_chart
 
 
@@ -81,3 +83,14 @@ def test_servicemonitors_pin_joblabel_for_targetdown():
     for name in ("medical-qa-api", "medical-qa-retrieval"):
         sm = find_kind(resources, "ServiceMonitor", name)
         assert sm["spec"]["jobLabel"] == "app.kubernetes.io/name"
+
+
+def test_dashboard_configmap_carries_valid_json_and_grafana_label():
+    resources = render_chart("monitoring")
+    cm = find_kind(resources, "ConfigMap", "medical-qa-dashboard")
+    assert cm["metadata"]["labels"]["grafana_dashboard"] == "1"
+    raw = cm["data"]["medical-qa-serving.json"]
+    dashboard = json.loads(raw)  # must be valid JSON
+    titles = {p["title"] for p in dashboard["panels"]}
+    assert "Request rate by status" in titles
+    assert "Latency p95 (total/model)" in titles
