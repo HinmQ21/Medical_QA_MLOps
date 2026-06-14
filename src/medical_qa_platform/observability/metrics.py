@@ -32,6 +32,16 @@ MODEL_LATENCY = Histogram(
     ["backend"],
     buckets=LATENCY_BUCKETS,
 )
+TOOL_OUTCOME = Counter(
+    "mqa_tool_outcome_total",
+    "Per-request tool usage outcome.",
+    ["outcome"],  # not_called | empty | hit
+)
+TOOL_CALLS_PER_REQUEST = Histogram(
+    "mqa_tool_calls_per_request",
+    "Number of tool calls the model made in one /predict.",
+    buckets=(0, 1, 2, 3, 4, 5),
+)
 
 
 def observe_request(endpoint: str, backend: str, status: str, latency_s: float) -> None:
@@ -47,6 +57,11 @@ def observe_retrieval(latency_s: float, no_result: bool) -> None:
 
 def observe_model(backend: str, latency_s: float) -> None:
     MODEL_LATENCY.labels(backend=backend).observe(latency_s)
+
+
+def observe_tool(tool_call_count: int, outcome: str) -> None:
+    TOOL_OUTCOME.labels(outcome=outcome).inc()
+    TOOL_CALLS_PER_REQUEST.observe(tool_call_count)
 
 
 def render_metrics() -> tuple[bytes, str]:
