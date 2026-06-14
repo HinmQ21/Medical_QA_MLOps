@@ -193,3 +193,13 @@ def test_predict_skips_retrieval_when_model_makes_no_tool_call(tmp_path):
     )
     TestClient(app).post("/predict", json={"question": "Q?"})
     assert spy.called is False
+
+
+def test_metrics_include_model_and_tool_and_build_info(tmp_path):
+    client = _client(tmp_path)
+    client.post("/predict", json={"question": "Q?"})
+    text = client.get("/metrics").text
+    assert "mqa_model_latency_seconds" in text
+    assert "mqa_tool_outcome_total" in text
+    assert 'outcome="not_called"' in text  # MockBackend makes no tool call
+    assert "mqa_build_info" in text

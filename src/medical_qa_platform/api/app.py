@@ -8,7 +8,13 @@ from fastapi import FastAPI, Response
 from ..config import Settings
 from ..drift.collector import DriftCollector
 from ..inference.agent import run_agentic_loop
-from ..observability.metrics import observe_request, render_metrics
+from ..observability.metrics import (
+    observe_model,
+    observe_request,
+    observe_tool,
+    render_metrics,
+    set_build_info,
+)
 from ..retrieval.backends import SupportsSearch
 from ..retrieval.contract import RETRIEVAL_CONTRACT_VERSION
 from .parser import parse_answer
@@ -43,6 +49,7 @@ def create_app(
     )
     if backend is not None:
         app.state.backend = backend
+        set_build_info(app.state.model_version, RETRIEVAL_CONTRACT_VERSION, backend.name)
     if retrieval is not None:
         app.state.retrieval = retrieval
 
@@ -60,6 +67,11 @@ def create_app(
             from ..retrieval.client import RetrievalClient
 
             app.state.retrieval = RetrievalClient.from_env()
+        set_build_info(
+            app.state.model_version,
+            RETRIEVAL_CONTRACT_VERSION,
+            app.state.backend.name,
+        )
 
     @app.get("/health")
     def health():
@@ -98,13 +110,24 @@ def create_app(
             latency_ms=latency_ms,
             trace_id=trace_id,
         )
+        if result.tool_call_count == 0:
+            outcome = "not_called"
+        elif not result.evidence:
+            outcome = "empty"
+        else:
+            outcome = "hit"
+        status = "ok" if answer is not None else "no_answer"
         observe_request(
             endpoint="/predict",
             backend=app.state.backend.name,
-            status="ok" if answer is not None else "no_answer",
+            status=status,
             latency_s=latency_ms / 1000.0,
         )
-        app.state.collector.record(req, resp, n_evidence=len(result.evidence))
+        observe_model(app.state.backend.name, result.model_latency_s)
+        observe_tool(result.tool_call_count, outcome)
+        app.state.collector.record(
+            req, resp, n_evidence=len(result.evidence), tool_call_count=result.tool_call_count
+        )
         return resp
 
     @app.get("/metrics")
