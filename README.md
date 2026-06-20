@@ -133,6 +133,7 @@ make smoke-pipeline         # same stages through DVC (dvc repro)
 make full-pipeline-dry-run  # print the full-pipeline plan (structural in CI)
 make full-pipeline          # REAL: orchestrate the training pipeline (needs free GB10 GPU + vLLM)
 make smoke-full             # full pipeline with tiny caps (gate before a real run)
+make mlflow-register-dry-run # dry-run MLflow registration
 make dvc-status
 ```
 
@@ -148,6 +149,11 @@ make helm-lint      # lint 6 charts (api/retrieval/nginx/kserve/ui/monitoring)
 make helm-template  # render charts
 make helm-dry-run   # kubectl apply --dry-run for standard resources
 ```
+
+The four images are built from `docker/api.Dockerfile` (FastAPI API),
+`docker/retrieval.Dockerfile` (KG retrieval service), `docker/pipeline-init.Dockerfile`
+(DVC-capable init image used by the retrieval chart to `dvc pull`), and
+`docker/ui.Dockerfile` (Streamlit UI).
 
 The KServe `InferenceService` runs in **RawDeployment** mode (plain Deployment/Service,
 no Knative/Istio) so it deploys on a lean GKE Standard zonal cluster; it serves
