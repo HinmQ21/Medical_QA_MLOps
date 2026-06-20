@@ -1,134 +1,209 @@
-# Medical_QA_MLOps
+# Medical QA — MLOps Platform
 
-Runtime inference package for the Medical QA MLOps platform.
+A production-shaped **MLOps serving + pipeline** platform for a Medical QA system.
+It ships an agentic inference API, a knowledge-graph retrieval service, a
+DVC + MLflow pipeline, Helm/Docker/KServe deployment, keyless CI/CD onto GKE, a
+Streamlit demo UI, and drift + Prometheus observability.
 
-## Repository Boundary
+> **Package:** `medical_qa_platform` (src layout) · Python ≥ 3.12 · managed with
+> `uv` in `.venv`.
 
-This repository is self-contained for runtime API and retrieval-service code.
-It does not import from a sibling `baseline/` checkout.
+The runtime package (`src/medical_qa_platform/`) is **self-contained**: a guard
+test (`tests/retrieval/test_kg_backend_self_contained.py`) keeps `src/` free of
+out-of-tree imports. The full training pipeline orchestrates its training scripts
+out-of-process (subprocess), so the serving and pipeline code stay decoupled.
 
-The production KG retrieval backend expects local artifact files, usually
-populated later by DVC or mounted into the retrieval container:
+## Architecture
 
-- `index_hyperedge.bin`
-- `index_entity.bin`
-- `hedge_ids.npy`
-- `entity_names.npy`
-- `medical_hg.json`
+```
+                         ┌─────────────── GKE (demo) ───────────────┐
+Browser ─ UI (Streamlit :8501) ─x-api-key─> nginx gateway ──────────┐
+                                                                    │ (x-api-key server-side)
+                                          ┌─────────────────────────▼────────────┐
+                                          │  api (FastAPI) — /predict             │
+                                          │  agentic tool-call loop               │
+                                          └──┬────────────────────────────────┬───┘
+                          tool: search_medical_knowledge                  ModelBackend
+                                             │                                │
+                               retrieval service (FAISS + MedEmbed-small)     │
+                               ranker retrieve_v1 → contract.format_evidence  │
+                                                                              │
+                           MODEL_BACKEND=mock ── MockBackend                  │
+                           MODEL_BACKEND=llm  ── LLMBackend (OpenAI /v1) ─────┤
+                                                    ├── DGX vLLM (3B model) via Cloudflare Tunnel
+                                                    └── KServe llama.cpp (Qwen2.5-1.5B) in-cluster
 
-Set `KG_DATA_DIR` to the directory containing those files. Heavy retrieval
-dependencies are optional and installed with:
-
-```bash
-pip install ".[runtime]"
+Offline:  params.yaml ─▶ mlops/pipelines ─▶ DVC stages ─▶ artifacts/ ─▶ MLflow registry
+          (the full pipeline drives training scripts via subprocess — decoupled from serving)
 ```
 
+## `/predict` — agentic tool-call loop
 
-## Smoke MLOps Pipeline
+`/predict` is a **model-driven agentic loop**, not one-shot RAG. The model decides
+when to call `search_medical_knowledge` (native OpenAI `tools=`); the loop runs the
+tool, feeds results back, and repeats until the model answers or `MAX_TOOL_ITERATIONS`
+(default 2) is hit. This mirrors the training rollout.
 
-Plan 2 adds a self-contained smoke pipeline. It does not depend on a sibling
-`baseline/` checkout.
+- **Request:** `{ "question": "<question with A) B) C) D) inline>" }`.
+- **Response:** `answer` (best-effort letter parse, may be `null`), `raw_output`,
+  `evidence[]`, `trace[]` (per-turn), `backend`, `model_version`, `contract_version`,
+  `latency_ms`, `trace_id`.
 
-Install pipeline dependencies:
+## Model backends (`MODEL_BACKEND`)
 
-```bash
-make install-pipeline
+| Backend | Use | Notes |
+|---------|-----|-------|
+| `mock` *(default)* | CI / offline plumbing | `MockBackend` |
+| `llm` | real model | `LLMBackend`, generic OpenAI `/v1` client (`vllm` is a back-compat alias) |
+
+The `llm` backend points at one of two targets:
+
+| Target | When | Config |
+|--------|------|--------|
+| **DGX vLLM + Cloudflare Tunnel** | real 3B model | `LLM_BASE_URL=https://llm.<domain>/v1`, `LLM_MODEL=medical-qa-llama-gdpo`, `LLM_API_KEY=…` — see `docs/runbooks/dgx-vllm-cloudflare.md` |
+| **KServe llama.cpp in-cluster** | GKE demo, no DGX | `LLM_BASE_URL=http://medical-qa-kserve-predictor.<ns>.svc.cluster.local/v1`, `LLM_MODEL=qwen2.5-1.5b-instruct`, `LLM_API_KEY` unset |
+
+> `LLM_BASE_URL` **must end in `/v1`**, and deploys should set `MAX_TOKENS ≥ 2048`
+> (the 512 default truncates `<think>…</think><answer>`, losing `<answer>`).
+
+## Retrieval parity
+
+The retrieval ranker `retrieve_v1` (8-term dual-retrieval fusion) lives in
+`retrieval/ranker.py`. Encoder: **`abhinand/MedEmbed-small-v0.1` (384-d)**; contract
+version: **`v1-medembed-small`** (`retrieval/contract.py`).
+
+Changing the ranker or encoder requires regenerating the golden parity fixtures
+(`scripts/gen_retrieval_golden.py`), bumping `RETRIEVAL_CONTRACT_VERSION`, and (if the
+encoder changed) re-training. Parity is tested at L1 (CI, replay FAISS hits) and L2
+(opt-in, full backend).
+
+The production KG retrieval backend expects these local artifact files (populated by
+DVC or mounted into the retrieval container) in `KG_DATA_DIR`:
+
+```
+index_hyperedge.bin  index_entity.bin  hedge_ids.npy  entity_names.npy  medical_hg.json
 ```
 
-Run the pipeline locally without DVC orchestration:
+## Setup
 
 ```bash
-make smoke-pipeline-local
+cd /home/vcsai/minhlbq/mlops-platform   # always work from here
+
+make install              # .venv + uv pip install -e ".[dev]"
+make install-pipeline     # add [pipeline] extra (dvc[gs], mlflow)
+make install-deploy-tools # fetch helm + kubectl into .tools/bin
 ```
 
-Run the same stages through DVC:
+Optional extras: `[pipeline]` (DVC/MLflow), `[demo]` (Streamlit),
+`[runtime]` (faiss-cpu, sentence-transformers — retrieval container only).
+
+## Test
 
 ```bash
-make smoke-pipeline
+make test    # pytest + coverage, fail_under=80 (~95% in practice)
 ```
 
-Dry-run MLflow registration:
+Some tests are SKIPped outside CI because they need the `[runtime]` or `[demo]`
+extras — install the relevant extra and re-run to verify them for real.
+
+## Run the API locally
 
 ```bash
-make mlflow-register-dry-run
+# mock backend (offline)
+MODEL_BACKEND=mock .venv/bin/uvicorn medical_qa_platform.api.app:create_app --factory --reload
+
+# real model
+MODEL_BACKEND=llm LLM_BASE_URL=https://llm.<domain>/v1 LLM_MODEL=… LLM_API_KEY=… \
+  .venv/bin/uvicorn medical_qa_platform.api.app:create_app --factory
 ```
 
-The smoke pipeline writes artifacts under `artifacts/smoke/`. DVC tracks stage
-lineage through `dvc.yaml`; MLflow receives metrics and artifacts through
-`mlops/mlflow_register.py`.
+Endpoints: `/health` · `/ready` · `/predict` · `/metrics` · `/version`.
 
-## Docker, Helm, KServe, and CI
-
-Plan 3 adds deployable app-serving artifacts for the runtime package:
-
-- `docker/api.Dockerfile` builds the FastAPI pre/post-processing API.
-- `docker/retrieval.Dockerfile` builds the KG retrieval service with the `runtime`
-  extra, but does not bake KG artifacts or encoder weights into the image.
-- The KServe InferenceService uses the upstream `ghcr.io/ggml-org/llama.cpp:server`
-  image directly (no custom build) and pulls `Qwen/Qwen2.5-1.5B-Instruct-GGUF:Q4_K_M`
-  at startup, exposing the OpenAI-compatible `/v1` API.
-- `docker/pipeline-init.Dockerfile` builds the DVC-capable init image used by the
-  retrieval Helm chart to run `dvc pull`.
-
-Install local Helm and kubectl tools:
+## Streamlit demo UI
 
 ```bash
-make install-deploy-tools
+make demo-ui    # installs [demo], then streamlit run app/streamlit_app.py :8501
 ```
 
-Lint and render all charts:
+## Offline pipeline (DVC + MLflow)
 
 ```bash
-make helm-lint
-make helm-template
+make smoke-pipeline-local   # build_smoke_kg → eval_smoke → mlflow register (no DVC)
+make smoke-pipeline         # same stages through DVC (dvc repro)
+make full-pipeline-dry-run  # print the full-pipeline plan (structural in CI)
+make full-pipeline          # REAL: orchestrate the training pipeline (needs free GB10 GPU + vLLM)
+make smoke-full             # full pipeline with tiny caps (gate before a real run)
+make dvc-status
 ```
 
-Run client-side dry-run validation for built-in Kubernetes resources:
+`params.yaml` defines the `smoke` / `full` / `smoke_full` profiles; `dvc.yaml` +
+`dvc.lock` track stage lineage. The full pipeline orchestrates training via
+subprocess and registers the result through `mlops/mlflow_register.py`.
+
+## Docker & Helm
 
 ```bash
-make helm-dry-run
+make docker-build   # 4 images, --platform linux/amd64 (cross-build from aarch64 host)
+make helm-lint      # lint 6 charts (api/retrieval/nginx/kserve/ui/monitoring)
+make helm-template  # render charts
+make helm-dry-run   # kubectl apply --dry-run for standard resources
 ```
 
+The KServe `InferenceService` runs in **RawDeployment** mode (plain Deployment/Service,
+no Knative/Istio) so it deploys on a lean GKE Standard zonal cluster; it serves
+Qwen2.5-1.5B-Instruct on CPU via llama.cpp and is consumed through the `llm` backend.
 The KServe chart is structurally tested locally because `kubectl --dry-run=client`
-cannot validate `serving.kserve.io` resources without the KServe CRD installed in a
-cluster. The `medical-qa-kserve` `InferenceService` runs in **RawDeployment** mode
-(plain Deployment/Service, no Knative/Istio) so it deploys on a lean free-tier
-**GKE Standard zonal** cluster with KServe installed; `minReplicas: 1` (RawDeployment
-has no scale-to-zero without KEDA). It serves Qwen2.5-1.5B-Instruct on CPU via
-llama.cpp; the model answers naturally and the API's answer-parser extracts the letter
-from its `<answer>…</answer>` output. The API consumes it through the `llm` backend:
-set `MODEL_BACKEND=llm` and point `LLM_BASE_URL` at the in-cluster predictor Service
-(e.g. `http://medical-qa-kserve-predictor.medical-qa.svc.cluster.local/v1`; confirm
-the exact Service name/namespace with `kubectl get svc` after deploy).
+cannot validate `serving.kserve.io` resources without the CRD installed.
 
-Build images on an x86 CI runner, or locally through `buildx` when needed:
+> Redeploys must use the image **sha tag** (`IMAGE_TAG=<sha> bash scripts/cloud/deploy.sh`)
+> — charts use `pullPolicy: IfNotPresent`, so `:latest` won't pull new code. GHCR
+> packages must be **public** (charts carry no imagePullSecret).
+
+## Cloud deploy — GKE demo
+
+One-click GitHub workflows with keyless (WIF/OIDC) CI/CD. The CI demo uses the `mock`
+backend; flip to `MODEL_BACKEND=llm` for a real model. Retrieval is always real. Full
+runbook: [`docs/cloud-setup.md`](docs/cloud-setup.md).
 
 ```bash
-make docker-build
+# one-time bootstrap (durable)
+make cloud-gcs-dvc            # GCS DVC remote
+make cloud-workload-identity  # WI for retrieval to pull the KG
+make cloud-github-oidc        # keyless GitHub → GCP (WIF)
+
+# demo lifecycle (also available as GitHub workflows)
+make cloud-provision          # GKE Autopilot
+make cloud-secrets            # nginx api-key + LLM key
+make cloud-deploy             # helm upgrade --install
+make cloud-smoke              # nginx → api → retrieval → model
+make cloud-teardown           # delete cluster + LB (keeps the bucket)
+
+# GKE Standard + in-cluster llama.cpp, one command:
+GCP_PROJECT=… NGINX_API_KEY=$(openssl rand -hex 24) bash scripts/cloud/demo_up_llm.sh
 ```
 
-The development host may be `aarch64`, while the target GKE nodes are `linux/amd64`.
-The Docker build target and GitHub Actions workflow therefore pin
-`--platform linux/amd64`.
+- **Demo Up / Demo Down (GKE)** — manual workflows to bring the demo up
+  (provision + deploy + smoke) and tear it down.
+- **Auto Deploy** — pushes to `main` auto-roll new images onto the Autopilot
+  `medical-qa` cluster while it is up, and skip green when it is down. (The manual
+  GKE Standard `medical-qa-llm` cluster is deployed by hand with a sha tag.)
 
-The Helm charts cover API, retrieval, NGINX API-key gateway, and a KServe
-llama.cpp `InferenceService` (Qwen2.5-1.5B). Live GKE deployment, GCS DVC remote
-credentials, and observability stacks are deferred to Plan 4.
+## Observability
 
-## Cloud Deploy — GKE-only Demo (slim Plan 4)
+Drift collection (`drift/collector.py`) and Prometheus metrics
+(`observability/`) ship with the platform; a Helm `monitoring` chart deploys the
+monitoring stack. See [`docs/runbooks/monitoring.md`](docs/runbooks/monitoring.md).
 
-Deploy the stack to GKE Autopilot with one-click GitHub workflows and keyless
-CI/CD. The CI demo uses the **mock** backend; flip to `MODEL_BACKEND=llm`
-(self-hosted vLLM on the DGX-Spark via Cloudflare Tunnel, or the in-cluster
-llama.cpp InferenceService) for a real model —
-see `docs/runbooks/dgx-vllm-cloudflare.md`. Retrieval is always real. See the
-full runbook in [`docs/cloud-setup.md`](docs/cloud-setup.md):
+## Repository layout
 
-- **Demo Up (GKE)** / **Demo Down (GKE)** — manual workflows to bring the demo up
-  (provision + deploy + smoke) and tear it down (release LB + delete cluster).
-- **Auto Deploy** — pushes to `main` auto-roll new images while the cluster is up,
-  and skip green when it's down.
-
-One-time bootstrap (`setup_gcs_dvc_remote.sh`, `setup_workload_identity.sh`,
-`setup_github_oidc.sh`) sets up the GCS DVC remote and keyless GitHub→GCP auth.
-Live GKE deploy in `asia-southeast1`.
+```
+src/medical_qa_platform/   runtime package (api, inference, retrieval, drift, observability)
+mlops/                     pipelines (smoke / full), mlflow_register, smoke_data
+deploy/helm/               6 Helm charts (api, retrieval, nginx, kserve, ui, monitoring)
+docker/                    4 Dockerfiles (api, retrieval, pipeline-init, ui)
+app/                       Streamlit demo UI
+scripts/                   cloud/*.sh, gen_retrieval_golden.py, install_deploy_tools.py
+tests/                     pytest suite (~95% coverage)
+docs/                      specs, plans, runbooks, cloud-setup.md
+params.yaml · dvc.yaml     pipeline profiles + stage lineage
+```
